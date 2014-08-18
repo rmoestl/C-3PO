@@ -1,1 +1,1 @@
-javac src/java/org/c_3po/Main.java -d bin
+javac -d bin -cp lib/thymeleaf-2.1.3.RELEASE.jar src/java/org/c_3po/Main.java

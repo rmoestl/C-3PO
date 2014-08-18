@@ -1,1 +1,2 @@
-java -cp bin/ org.c_3po.Main
+java -cp bin;"lib/*" org.c_3po.Main
+
