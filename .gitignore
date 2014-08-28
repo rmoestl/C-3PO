@@ -1,2 +1,6 @@
 .gradle/
 build/
+.idea/libraries/
+.idea/copyright/
+.idea/scopes/
+.idea/vcs.xml
