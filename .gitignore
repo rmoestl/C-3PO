@@ -4,3 +4,5 @@ build/
 .idea/copyright/
 .idea/scopes/
 .idea/vcs.xml
+.idea/workspace.xml
+.idea/uiDesigner.xml
