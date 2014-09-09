@@ -24,6 +24,7 @@ dependencies {
     compile group: 'slf4j', name: 'slf4j-api', version: '1.6.1', transitive: false
     compile group: 'ognl', name: 'ognl', version: '3.0.6', transitive: false
     compile group: 'javassist', name: 'javassist', version: '3.16.1-GA', transitive: false
+    compile group: 'thymeleaf-layout-dialect', name: 'thymeleaf-layout-dialect', version: '1.2.5', transitive: false
 }
 
 

@@ -15,8 +15,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
-        // TODO introduce a partials directory, partials are not copied to destination directory
-        // TODO introduce an img directory, that is copied to the destination directory
+        // TODO test out Thymeleaf layout for YodaConditions
         // TODO a c-3po.properties file on the classpath
 
         System.out.println("Hello There! I'm C-3PO! Which site do you wish me to generate?");

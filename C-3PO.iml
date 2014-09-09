@@ -19,6 +19,7 @@
     <orderEntry type="library" exported="" name="Gradle: slf4j-api-1.6.1" level="project" />
     <orderEntry type="library" exported="" name="Gradle: ognl-3.0.6" level="project" />
     <orderEntry type="library" exported="" name="Gradle: javassist-3.16.1-GA" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: thymeleaf-layout-dialect-1.2.5" level="project" />
   </component>
 </module>
 
