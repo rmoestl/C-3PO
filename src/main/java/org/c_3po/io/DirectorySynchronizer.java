@@ -23,7 +23,7 @@ public class DirectorySynchronizer {
         }
         for (File file : sourceDirectory.listFiles()) {
             if (file.isDirectory()) {
-                // TODO Implement copying directories
+                sync(file.getPath().toString(), Paths.get(targetPath, file.getName()).toString());
             } else {
                 Files.copy(file.toPath(), Paths.get(targetDirectory.getPath(), file.getName()),
                         StandardCopyOption.REPLACE_EXISTING);

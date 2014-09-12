@@ -65,6 +65,7 @@ public class SiteGenerator {
     private void syncStaticResources(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
         directorySynchronizer.sync(sourceDirectoryPath + "/img", destinationDirectoryPath + "/img");
         directorySynchronizer.sync(sourceDirectoryPath + "/css", destinationDirectoryPath + "/css");
+        directorySynchronizer.sync(sourceDirectoryPath + "/js", destinationDirectoryPath + "/js");
     }
 
     private TemplateEngine setupTemplateEngine(String sourceDirectoryPath) {
