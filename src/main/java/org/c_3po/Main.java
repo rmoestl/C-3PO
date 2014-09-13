@@ -24,9 +24,14 @@ public class Main {
         CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
         System.out.println("Source directory is: " + cmdArguments.getSourceDirectory());
         System.out.println("Destination directory is: " + cmdArguments.getDestinationDirectory());
+        System.out.println("autoBuild is: " + String.valueOf(cmdArguments.isAutoBuild()));
 
         // Generate the Site
         SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
-        siteGenerator.generate();
+        if (cmdArguments.isAutoBuild()) {
+            siteGenerator.generateOnFileChange();
+        } else {
+            siteGenerator.generate();
+        }
     }
 }

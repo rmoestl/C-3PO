@@ -7,6 +7,7 @@ public class ArgumentsParser {
     public CmdArguments processCmdLineArguments(String[] args) {
         String sourceDirectoryName = "";
         String destinationDirectoryName = "";
+        boolean autoBuild = false;
 
         // TODO Add checks that source directory exist
 
@@ -25,8 +26,12 @@ public class ArgumentsParser {
                 destinationDirectoryName = destinationDirArgument;
                 i++;
             }
+
+            if ("-a".equals(argument)) {
+                autoBuild = true;
+            }
         }
 
-        return new CmdArguments(sourceDirectoryName, destinationDirectoryName);
+        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild);
     }
 }
