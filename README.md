@@ -17,4 +17,6 @@ C-3PO emphasizes the idea of **convention over configuration** which means that 
 - js --> here your JavaScript files are placed
 - img --> here your image files (and possibly other media files) are placed
 
+##More Resources
+If you wanna dive deeper into C-3PO have a look into the Wiki
 
