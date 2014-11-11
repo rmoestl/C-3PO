@@ -14,19 +14,21 @@ import java.nio.file.StandardCopyOption;
 public class DirectorySynchronizer {
     public void sync(String sourceDirectoryPath, String targetPath) throws IOException {
         File sourceDirectory = new File(sourceDirectoryPath);
-        File targetDirectory = new File(targetPath);
-        validateDirectory(sourceDirectory);
-        validateDirectory(targetDirectory);
+        if (sourceDirectory.exists()) {
+            File targetDirectory = new File(targetPath);
+            validateDirectory(sourceDirectory);
+            validateDirectory(targetDirectory);
 
-        if (!targetDirectory.exists()) {
-            Files.createDirectory(targetDirectory.toPath());
-        }
-        for (File file : sourceDirectory.listFiles()) {
-            if (file.isDirectory()) {
-                sync(file.getPath().toString(), Paths.get(targetPath, file.getName()).toString());
-            } else {
-                Files.copy(file.toPath(), Paths.get(targetDirectory.getPath(), file.getName()),
-                        StandardCopyOption.REPLACE_EXISTING);
+            if (!targetDirectory.exists()) {
+                Files.createDirectory(targetDirectory.toPath());
+            }
+            for (File file : sourceDirectory.listFiles()) {
+                if (file.isDirectory()) {
+                    sync(file.getPath().toString(), Paths.get(targetPath, file.getName()).toString());
+                } else {
+                    Files.copy(file.toPath(), Paths.get(targetDirectory.getPath(), file.getName()),
+                            StandardCopyOption.REPLACE_EXISTING);
+                }
             }
         }
     }
