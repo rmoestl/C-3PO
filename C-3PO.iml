@@ -16,10 +16,12 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="Gradle: thymeleaf-2.1.3.RELEASE" level="project" />
     <orderEntry type="library" exported="" name="Gradle: unbescape-1.0" level="project" />
-    <orderEntry type="library" exported="" name="Gradle: slf4j-api-1.6.1" level="project" />
     <orderEntry type="library" exported="" name="Gradle: ognl-3.0.6" level="project" />
     <orderEntry type="library" exported="" name="Gradle: javassist-3.16.1-GA" level="project" />
     <orderEntry type="library" exported="" name="Gradle: thymeleaf-layout-dialect-1.2.5" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: slf4j-api-1.7.7" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: logback-core-1.1.3" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: logback-classic-1.1.3" level="project" />
   </component>
 </module>
 

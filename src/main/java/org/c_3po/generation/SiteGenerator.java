@@ -150,6 +150,7 @@ public class SiteGenerator {
         templateResolver.setTemplateMode("HTML5");
         templateResolver.setPrefix(prefix + "/");
         templateResolver.setSuffix(".html");
+        templateResolver.setCharacterEncoding("UTF-8");
         return templateResolver;
     }
 
