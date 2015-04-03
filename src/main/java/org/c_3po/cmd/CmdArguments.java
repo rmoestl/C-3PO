@@ -6,7 +6,6 @@ package org.c_3po.cmd;
 public class CmdArguments {
     private final String sourceDirectory;
     private final String destinationDirectory;
-
     private final boolean autoBuild;
 
     public CmdArguments(String sourceDirectory, String destinationDirectory, boolean autoBuild) {
