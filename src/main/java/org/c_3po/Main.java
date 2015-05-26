@@ -18,9 +18,9 @@ public class Main {
 
         // Parsing Command Line Arguments
         CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
-        LOG.debug("Source directory is: " + cmdArguments.getSourceDirectory());
-        LOG.debug("Destination directory is: " + cmdArguments.getDestinationDirectory());
-        LOG.debug("autoBuild is: " + String.valueOf(cmdArguments.isAutoBuild()));
+        LOG.debug("src (source directory) is: {}", cmdArguments.getSourceDirectory());
+        LOG.debug("dest (destination directory) is: {}", cmdArguments.getDestinationDirectory());
+        LOG.debug("autoBuild is: {}", String.valueOf(cmdArguments.isAutoBuild()));
 
         // Generate the Site
         SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
