@@ -12,6 +12,7 @@ import org.thymeleaf.templateresolver.TemplateResolver;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.Objects;
 
 import static java.nio.file.StandardWatchEventKinds.*;
 
@@ -50,7 +51,13 @@ public class SiteGenerator {
      * Factory method that creates a SiteGenerator from command line arguments.
      */
     public static SiteGenerator fromCmdArguments(CmdArguments cmdArguments) {
-        return new SiteGenerator(cmdArguments.getSourceDirectory(), cmdArguments.getDestinationDirectory());
+        Objects.requireNonNull(cmdArguments);
+        if (!Files.exists(Paths.get(cmdArguments.getSourceDirectory()))) {
+            throw new IllegalArgumentException(
+                    "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
+        } else {
+            return new SiteGenerator(cmdArguments.getSourceDirectory(), cmdArguments.getDestinationDirectory());
+        }
     }
 
     /**
