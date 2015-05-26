@@ -1,9 +1,11 @@
 .gradle/
 build/
+C-3PO.iml
 .idea/libraries/
 .idea/copyright/
 .idea/scopes/
 .idea/vcs.xml
 .idea/workspace.xml
 .idea/uiDesigner.xml
+.idea/misc.xml
 .idea/dictionaries/
