@@ -16,6 +16,19 @@ C-3PO emphasizes the idea of **convention over configuration** which means that 
 - *js* --> JavaScript files directory
 - *img* --> image files (and possibly other media files) directory
 
+##Development
+
+###How to build C-3PO?
+
+C-3PO builds with [Gradle 2.0](https://docs.gradle.org/2.0/userguide/userguide.html) and uses it's [application plugin](https://docs.gradle.org/2.0/userguide/application_plugin.html).
+
+- *gradle build* ... builds (compile, test etc.) the project
+- *gradle distZip* ... creates a ZIP-packaged distribution of C-3PO
+- *gradle installApp* ... installs C-3PO into *build/install*
+
+**Hint**: you can put the **/bin** directory within the install directory to your operating system's search **PATH**. This way C-3PO will always be available on the command line. 
+This is very useful when developing C-3PO and building a website with C-3PO at the same time.
+
 ##More Resources
 If you want to dive deeper into C-3PO, have a look into the Wiki.
 
