@@ -11,9 +11,14 @@ import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
+import static java.nio.file.StandardOpenOption.*;
 import static java.nio.file.StandardWatchEventKinds.*;
 
 /**
@@ -133,18 +138,15 @@ public class SiteGenerator {
         return pathToWatch.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
     }
 
-    private void buildPages(String sourceDirectoryPath, String destinationDirectoryPath) throws FileNotFoundException {
+    private void buildPages(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
         Context context = new Context();
         File sourceDirectory = new File(sourceDirectoryPath);
         if (sourceDirectory.isDirectory()) {
             for (File file : sourceDirectory.listFiles(htmlFilesFilter)) {
                 if (!file.isDirectory()) {
-                    String result = templateEngine.process(file.getName().replace(".html", ""), context);
-
-                    // TODO Apply try-with-resources
-                    PrintWriter out = new PrintWriter(path(destinationDirectoryPath, file.getName()));
-                    out.println(result);
-                    out.close();
+                    List<String> lines = Arrays.asList(templateEngine.process(file.getName().replace(".html", ""), context));
+                    Path destinationPath = Paths.get(destinationDirectoryPath, file.getName()).toAbsolutePath();
+                    Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE);
                 }
             }
         }
