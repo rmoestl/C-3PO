@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import static java.nio.file.StandardCopyOption.*;
 import static java.nio.file.StandardOpenOption.*;
 import static java.nio.file.StandardWatchEventKinds.*;
 
@@ -35,6 +36,7 @@ public class SiteGenerator {
     public static final String FAVICON_ICO = "favicon.ico";
     public static final String HUMANS_TXT = "humans.txt";
     public static final String ROBOTS_TXT = "robots.txt";
+    public static final String SITEMAP_TXT = "sitemap.txt";
 
     private final DirectorySynchronizer directorySynchronizer;
     private final FilenameFilter htmlFilesFilter;
@@ -147,7 +149,7 @@ public class SiteGenerator {
 
     private void processPageDirectory(Path sourceDirectory, Path targetDirectory) throws IOException {
         buildPages(sourceDirectory, targetDirectory);
-        synchronizeStandardServerFiles(sourceDirectory, targetDirectory);
+        syncStandardServerFiles(sourceDirectory, targetDirectory);
     }
 
     private void buildPages(Path sourceDir, Path targetDir) throws IOException {
@@ -164,11 +166,18 @@ public class SiteGenerator {
         }
     }
 
-    private void synchronizeStandardServerFiles(Path sourceDir, Path targetDir) throws IOException {
-        Files.copy(sourceDir.resolve(HTACCESS), targetDir.resolve(HTACCESS));
-        Files.copy(sourceDir.resolve(FAVICON_ICO), targetDir.resolve(FAVICON_ICO));
-        Files.copy(sourceDir.resolve(HUMANS_TXT), targetDir.resolve(HUMANS_TXT));
-        Files.copy(sourceDir.resolve(ROBOTS_TXT), targetDir.resolve(ROBOTS_TXT));
+    private void syncStandardServerFiles(Path sourceDir, Path targetDir) throws IOException {
+        syncFile(sourceDir.resolve(HTACCESS), targetDir);
+        syncFile(sourceDir.resolve(FAVICON_ICO), targetDir);
+        syncFile(sourceDir.resolve(HUMANS_TXT), targetDir);
+        syncFile(sourceDir.resolve(ROBOTS_TXT), targetDir);
+        syncFile(sourceDir.resolve(SITEMAP_TXT), targetDir);
+    }
+
+    private void syncFile(Path file, Path targetDir) throws IOException {
+        if (file.toFile().exists()) {
+            Files.copy(file, targetDir.resolve(file.getFileName()), REPLACE_EXISTING);
+        }
     }
 
     private void processStaticResources(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
