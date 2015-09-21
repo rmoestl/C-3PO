@@ -10,24 +10,40 @@ public class Main {
     private static final Logger LOG = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {
+        Thread.currentThread().setUncaughtExceptionHandler(new UncaughtExceptionHandler());
 
         // TODO test out Thymeleaf layout for YodaConditions
         // TODO a c-3po.properties file on the classpath
 
-        LOG.info("Hello There! I'm C-3PO! Which site do you wish me to generate?");
+        try {
+            LOG.info("Hello There! I'm C-3PO! Which site do you wish me to generate?");
 
-        // Parsing Command Line Arguments
-        CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
-        LOG.debug("src (source directory) is: {}", cmdArguments.getSourceDirectory());
-        LOG.debug("dest (destination directory) is: {}", cmdArguments.getDestinationDirectory());
-        LOG.debug("autoBuild is: {}", String.valueOf(cmdArguments.isAutoBuild()));
+            // Parsing Command Line Arguments
+            CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
+            LOG.debug("src (source directory) is: {}", cmdArguments.getSourceDirectory());
+            LOG.debug("dest (destination directory) is: {}", cmdArguments.getDestinationDirectory());
+            LOG.debug("autoBuild is: {}", String.valueOf(cmdArguments.isAutoBuild()));
 
-        // Generate the Site
-        SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
-        if (cmdArguments.isAutoBuild()) {
-            siteGenerator.generateOnFileChange();
-        } else {
-            siteGenerator.generate();
+            // Generate the Site
+            SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+            if (cmdArguments.isAutoBuild()) {
+                siteGenerator.generateOnFileChange();
+            } else {
+                siteGenerator.generate();
+            }
+
+            LOG.debug("I'm going to shutdown.");
+        } catch (RuntimeException ex) {
+            LOG.error("Caught a runtime exception in main method. Terminating with a non-zero exit code");
+            System.exit(1);
+        }
+    }
+
+    private static class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            LOG.error("Caught an uncaught exception.", e);
         }
     }
 }
