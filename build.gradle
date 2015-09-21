@@ -27,6 +27,9 @@ dependencies {
     compile group: 'ognl', name: 'ognl', version: '3.0.6', transitive: false
     compile group: 'javassist', name: 'javassist', version: '3.16.1-GA', transitive: false
     compile group: 'thymeleaf-layout-dialect', name: 'thymeleaf-layout-dialect', version: '1.2.5', transitive: false
+    compile group: 'nekohtml', name: 'nekohtml', version: '1.9.22', transitive: false
+    compile group: 'xerces', name: 'xercesImpl', version: '2.11.0', transitive: false
+    compile group: 'xml-apis', name: 'xml-apis', version: '1.4.01', transitive: false
 }
 
 

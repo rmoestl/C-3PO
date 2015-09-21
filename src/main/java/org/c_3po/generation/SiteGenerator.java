@@ -183,7 +183,9 @@ public class SiteGenerator {
 
     private TemplateResolver newTemplateResolver(String prefix) {
         TemplateResolver templateResolver = new FileTemplateResolver();
-        templateResolver.setTemplateMode("HTML5");
+
+        // Instead of 'HTML5' this template mode allows void elements such as meta to have no closing tags
+        templateResolver.setTemplateMode("LEGACYHTML5");
         templateResolver.setPrefix(prefix + "/");
         templateResolver.setSuffix(".html");
         templateResolver.setCharacterEncoding("UTF-8");
