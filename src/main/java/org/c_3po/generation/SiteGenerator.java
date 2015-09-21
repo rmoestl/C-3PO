@@ -13,7 +13,6 @@ import org.thymeleaf.templateresolver.TemplateResolver;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -32,13 +31,17 @@ public class SiteGenerator {
     public static final String STD_DIR_JS = "js";
 
     private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
+    public static final String HTACCESS = ".htaccess";
+    public static final String FAVICON_ICO = "favicon.ico";
+    public static final String HUMANS_TXT = "humans.txt";
+    public static final String ROBOTS_TXT = "robots.txt";
 
     private final DirectorySynchronizer directorySynchronizer;
     private final FilenameFilter htmlFilesFilter;
+    private final String sourceDirectoryPath;
+    private final String destinationDirectoryPath;
 
     private TemplateEngine templateEngine;
-    private String sourceDirectoryPath = "";
-    private String destinationDirectoryPath = "";
 
     private SiteGenerator(String sourceDirectoryPath, String destinationDirectoryPath) {
         templateEngine = setupTemplateEngine(sourceDirectoryPath);
@@ -70,8 +73,8 @@ public class SiteGenerator {
      * @throws IOException
      */
     public void generate() throws IOException {
-        buildPages(sourceDirectoryPath, destinationDirectoryPath);
-        syncStaticResources(sourceDirectoryPath, destinationDirectoryPath);
+        processPages(Paths.get(sourceDirectoryPath), Paths.get(destinationDirectoryPath));
+        processStaticResources(sourceDirectoryPath, destinationDirectoryPath);
     }
 
     /**
@@ -114,12 +117,12 @@ public class SiteGenerator {
                     syncCssResources(sourceDirectoryPath, destinationDirectoryPath);
                 } else if (key == htmlWatchKey || key == layoutsWatchKey || key == partialsWatchKey) {
                     templateEngine.clearTemplateCache();
-                    buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                    buildPages(Paths.get(sourceDirectoryPath), Paths.get(destinationDirectoryPath));
                 } else if (key == jsWatchKey) {
-                    syncStaticResources(Paths.get(sourceDirectoryPath, STD_DIR_JS),
+                    processStaticResources(Paths.get(sourceDirectoryPath, STD_DIR_JS),
                             Paths.get(destinationDirectoryPath, STD_DIR_JS));
                 } else if (key == imgWatchKey) {
-                    syncStaticResources(Paths.get(sourceDirectoryPath, STD_DIR_IMG),
+                    processStaticResources(Paths.get(sourceDirectoryPath, STD_DIR_IMG),
                             Paths.get(destinationDirectoryPath, STD_DIR_IMG));
                 }
 
@@ -138,27 +141,43 @@ public class SiteGenerator {
         return pathToWatch.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
     }
 
-    private void buildPages(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
+    private void processPages(Path sourceDirectory, Path targetDirectory) throws IOException {
+        processPageDirectory(sourceDirectory, targetDirectory);
+    }
+
+    private void processPageDirectory(Path sourceDirectory, Path targetDirectory) throws IOException {
+        buildPages(sourceDirectory, targetDirectory);
+        synchronizeStandardServerFiles(sourceDirectory, targetDirectory);
+    }
+
+    private void buildPages(Path sourceDir, Path targetDir) throws IOException {
         Context context = new Context();
-        File sourceDirectory = new File(sourceDirectoryPath);
-        if (sourceDirectory.isDirectory()) {
-            for (File file : sourceDirectory.listFiles(htmlFilesFilter)) {
+        File sourceDirectoryFile = sourceDir.toFile();
+        if (sourceDirectoryFile.isDirectory()) {
+            for (File file : sourceDirectoryFile.listFiles(htmlFilesFilter)) {
                 if (!file.isDirectory()) {
                     List<String> lines = Arrays.asList(templateEngine.process(file.getName().replace(".html", ""), context));
-                    Path destinationPath = Paths.get(destinationDirectoryPath, file.getName()).toAbsolutePath();
+                    Path destinationPath = targetDir.resolve(file.getName());
                     Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE);
                 }
             }
         }
     }
 
-    private void syncStaticResources(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
+    private void synchronizeStandardServerFiles(Path sourceDir, Path targetDir) throws IOException {
+        Files.copy(sourceDir.resolve(HTACCESS), targetDir.resolve(HTACCESS));
+        Files.copy(sourceDir.resolve(FAVICON_ICO), targetDir.resolve(FAVICON_ICO));
+        Files.copy(sourceDir.resolve(HUMANS_TXT), targetDir.resolve(HUMANS_TXT));
+        Files.copy(sourceDir.resolve(ROBOTS_TXT), targetDir.resolve(ROBOTS_TXT));
+    }
+
+    private void processStaticResources(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
         syncCssResources(sourceDirectoryPath, destinationDirectoryPath);
         directorySynchronizer.sync(path(sourceDirectoryPath, STD_DIR_IMG), path(destinationDirectoryPath, STD_DIR_IMG));
         directorySynchronizer.sync(path(sourceDirectoryPath, STD_DIR_JS), path(destinationDirectoryPath, STD_DIR_JS));
     }
 
-    private void syncStaticResources(Path source, Path destination) throws IOException {
+    private void processStaticResources(Path source, Path destination) throws IOException {
         directorySynchronizer.sync(source.toAbsolutePath().toString(), destination.toString());
     }
 
