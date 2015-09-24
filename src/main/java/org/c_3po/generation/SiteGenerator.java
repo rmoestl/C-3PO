@@ -13,6 +13,8 @@ import org.thymeleaf.templateresolver.TemplateResolver;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFileAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -159,6 +161,9 @@ public class SiteGenerator {
             for (File file : sourceDirectoryFile.listFiles(htmlFilesFilter)) {
                 if (!file.isDirectory()) {
                     List<String> lines = Arrays.asList(templateEngine.process(file.getName().replace(".html", ""), context));
+                    if (!targetDir.toFile().exists()) {
+                        Files.createDirectories(targetDir);
+                    }
                     Path destinationPath = targetDir.resolve(file.getName());
                     Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE);
                 }
