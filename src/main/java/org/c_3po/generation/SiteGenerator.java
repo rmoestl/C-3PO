@@ -142,7 +142,9 @@ public class SiteGenerator {
     }
 
     private WatchKey registerToWatchService(WatchService watchService, Path pathToWatch) throws IOException {
-        return pathToWatch.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+        return Files.exists(pathToWatch)
+                ? pathToWatch.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
+                : null;
     }
 
     private void processPages(Path sourceDirectory, Path targetDirectory) throws IOException {
