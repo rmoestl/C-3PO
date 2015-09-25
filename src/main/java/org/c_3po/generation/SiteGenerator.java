@@ -10,16 +10,17 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import java.io.*;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFileAttributes;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static java.nio.file.StandardCopyOption.*;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.*;
 import static java.nio.file.StandardWatchEventKinds.*;
 
@@ -27,13 +28,13 @@ import static java.nio.file.StandardWatchEventKinds.*;
  * Main class responsible for site generation.
  */
 public class SiteGenerator {
+    private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
+
     public static final String STD_DIR_LAYOUTS = "_layouts";
     public static final String STD_DIR_PARTIALS = "_partials";
     public static final String STD_DIR_IMG = "img";
     public static final String STD_DIR_CSS = "css";
     public static final String STD_DIR_JS = "js";
-
-    private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
     public static final String HTACCESS = ".htaccess";
     public static final String FAVICON_ICO = "favicon.ico";
     public static final String HUMANS_TXT = "humans.txt";
@@ -52,11 +53,7 @@ public class SiteGenerator {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
         directorySynchronizer = new DirectorySynchronizer();
-        htmlFilesFilter = new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".html");
-            }
-        };
+        htmlFilesFilter = (dir, name) -> name.endsWith(".html");
     }
 
     /**
@@ -162,12 +159,12 @@ public class SiteGenerator {
         if (sourceDirectoryFile.isDirectory()) {
             for (File file : sourceDirectoryFile.listFiles(htmlFilesFilter)) {
                 if (!file.isDirectory()) {
-                    List<String> lines = Arrays.asList(templateEngine.process(file.getName().replace(".html", ""), context));
+                    List<String> lines = Collections.singletonList(templateEngine.process(file.getName().replace(".html", ""), context));
                     if (!targetDir.toFile().exists()) {
                         Files.createDirectories(targetDir);
                     }
                     Path destinationPath = targetDir.resolve(file.getName());
-                    Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE);
+                    Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
                 }
             }
         }
