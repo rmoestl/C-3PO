@@ -34,7 +34,7 @@ public class Main {
 
             LOG.debug("I'm going to shutdown.");
         } catch (RuntimeException ex) {
-            LOG.error("Caught a runtime exception in main method. Terminating with a non-zero exit code");
+            LOG.error("Caught a runtime exception in main method. Terminating with a non-zero exit code", ex);
             System.exit(1);
         }
     }
