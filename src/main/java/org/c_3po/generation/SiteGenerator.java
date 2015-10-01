@@ -10,12 +10,9 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -40,9 +37,10 @@ public class SiteGenerator {
     public static final String HUMANS_TXT = "humans.txt";
     public static final String ROBOTS_TXT = "robots.txt";
     public static final String SITEMAP_TXT = "sitemap.txt";
+    public static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
+    public static final String STD_DIR_GIT = ".git";
 
     private final DirectorySynchronizer directorySynchronizer;
-    private final FilenameFilter htmlFilesFilter;
     private final String sourceDirectoryPath;
     private final String destinationDirectoryPath;
 
@@ -53,7 +51,6 @@ public class SiteGenerator {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
         directorySynchronizer = new DirectorySynchronizer();
-        htmlFilesFilter = (dir, name) -> name.endsWith(".html");
     }
 
     /**
@@ -154,17 +151,42 @@ public class SiteGenerator {
     }
 
     private void buildPages(Path sourceDir, Path targetDir) throws IOException {
-        Context context = new Context();
-        File sourceDirectoryFile = sourceDir.toFile();
-        if (sourceDirectoryFile.isDirectory()) {
-            for (File file : sourceDirectoryFile.listFiles(htmlFilesFilter)) {
-                if (!file.isDirectory()) {
-                    List<String> lines = Collections.singletonList(templateEngine.process(file.getName().replace(".html", ""), context));
-                    if (!targetDir.toFile().exists()) {
-                        Files.createDirectories(targetDir);
+        if (Files.exists(sourceDir) && Files.isDirectory(sourceDir)) {
+
+            // Ensure targetDir exists
+            if (!Files.exists(targetDir)) {
+                Files.createDirectories(targetDir);
+            }
+
+            // Look for HTML files to generate
+            try (DirectoryStream<Path> htmlFilesStream =
+                         Files.newDirectoryStream(sourceDir, entry -> Files.isRegularFile(entry)
+                                 && entry.toFile().getName().endsWith(".html"))) {
+                for (Path htmlFile : htmlFilesStream) {
+
+                    // Generate
+                    Path relativeFilePath = Paths.get(sourceDirectoryPath).relativize(htmlFile);
+                    List<String> lines = Collections.singletonList(
+                            templateEngine.process(relativeFilePath.toString().replace(".html", ""), DEFAULT_THYMELEAF_CONTEXT));
+
+                    // Write to file
+                    Path destinationPath = targetDir.resolve(htmlFile.getFileName());
+                    try {
+                        Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
+                    } catch (IOException e) {
+                        LOG.error("Failed to write generated document to {}", destinationPath, e);
                     }
-                    Path destinationPath = targetDir.resolve(file.getName());
-                    Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
+                }
+            }
+
+            // Look for subdirectories that are to be processed by c-3po
+            try (DirectoryStream<Path> subDirStream =
+                         Files.newDirectoryStream(sourceDir, entry -> Files.isDirectory(entry)
+                                 && !isSpecialDir(entry)
+                                 && !Files.isSameFile(entry, Paths.get(destinationDirectoryPath)))) {
+                for (Path subDir : subDirStream) {
+                    LOG.info("I'm going to build pages in this subdirectory [{}]", subDir);
+                    buildPages(subDir, targetDir.resolve(subDir.getFileName()));
                 }
             }
         }
@@ -226,6 +248,15 @@ public class SiteGenerator {
 
     private String path(String first, String... more) {
         return Paths.get(first, more).toString();
+    }
+
+    private boolean isSpecialDir(Path dir) {
+        return dir.endsWith(STD_DIR_LAYOUTS) ||
+                dir.endsWith(STD_DIR_PARTIALS) ||
+                dir.endsWith(STD_DIR_CSS) ||
+                dir.endsWith(STD_DIR_JS) ||
+                dir.endsWith(STD_DIR_IMG) ||
+                dir.endsWith(STD_DIR_GIT);
     }
 
     public static void main(String[] args) {
