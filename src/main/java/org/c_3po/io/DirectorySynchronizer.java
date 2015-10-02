@@ -1,9 +1,9 @@
 package org.c_3po.io;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 /**
@@ -12,36 +12,37 @@ import java.nio.file.StandardCopyOption;
  * output folder.
  */
 public class DirectorySynchronizer {
-    public void sync(String sourceDirectoryPath, String targetPath) throws IOException {
-        File sourceDirectory = new File(sourceDirectoryPath);
-        if (sourceDirectory.exists()) {
-            File targetDirectory = new File(targetPath);
+    public void sync(Path sourceDirectory, Path targetDirectory) throws IOException {
+        if (Files.exists(sourceDirectory)) {
             validateDirectory(sourceDirectory);
             validateDirectory(targetDirectory);
 
-            if (!targetDirectory.exists()) {
-                Files.createDirectory(targetDirectory.toPath());
+            if (!Files.exists(targetDirectory)) {
+                Files.createDirectories(targetDirectory);
             }
-            for (File file : sourceDirectory.listFiles()) {
-                if (file.isDirectory()) {
-                    sync(file.getPath().toString(), Paths.get(targetPath, file.getName()).toString());
-                } else {
-                    Files.copy(file.toPath(), Paths.get(targetDirectory.getPath(), file.getName()),
-                            StandardCopyOption.REPLACE_EXISTING);
+
+            try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(sourceDirectory)) {
+                for (Path entry : directoryStream) {
+                    if (Files.isDirectory(entry)) {
+                        sync(entry, targetDirectory.resolve(entry.getFileName()));
+                    } else {
+                        Files.copy(entry, targetDirectory.resolve(entry.getFileName()),
+                                StandardCopyOption.REPLACE_EXISTING);
+                    }
                 }
             }
         }
     }
 
-    private void validateDirectory(File directory) throws IllegalArgumentException {
-        if (directory.exists() && !directory.isDirectory()) {
-            throw new IllegalArgumentException(directory.getAbsolutePath() + " is not a directory");
+    private void validateDirectory(Path directory) throws IllegalArgumentException {
+        if (Files.exists(directory) && !Files.isDirectory(directory)) {
+            throw new IllegalArgumentException(directory.toAbsolutePath() + " is not a directory");
         }
-        if (directory.exists() && !directory.canRead()) {
-            throw new IllegalArgumentException("Read access denied for " + directory.getAbsolutePath());
+        if (Files.exists(directory) && !Files.isReadable(directory)) {
+            throw new IllegalArgumentException("Read access denied for " + directory.toAbsolutePath());
         }
-        if (directory.exists() && !directory.canWrite()) {
-            throw new IllegalArgumentException("Write access denied for " + directory.getAbsolutePath());
+        if (Files.exists(directory) && !Files.isWritable(directory)) {
+            throw new IllegalArgumentException("Write access denied for " + directory.toAbsolutePath());
         }
     }
 }

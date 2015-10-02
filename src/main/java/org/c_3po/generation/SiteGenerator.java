@@ -26,27 +26,26 @@ import static java.nio.file.StandardWatchEventKinds.*;
  */
 public class SiteGenerator {
     private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
-
-    public static final String STD_DIR_LAYOUTS = "_layouts";
-    public static final String STD_DIR_PARTIALS = "_partials";
-    public static final String STD_DIR_IMG = "img";
-    public static final String STD_DIR_CSS = "css";
-    public static final String STD_DIR_JS = "js";
-    public static final String HTACCESS = ".htaccess";
-    public static final String FAVICON_ICO = "favicon.ico";
-    public static final String HUMANS_TXT = "humans.txt";
-    public static final String ROBOTS_TXT = "robots.txt";
-    public static final String SITEMAP_TXT = "sitemap.txt";
-    public static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
-    public static final String STD_DIR_GIT = ".git";
+    private static final String STD_DIR_LAYOUTS = "_layouts";
+    private static final String STD_DIR_PARTIALS = "_partials";
+    private static final String STD_DIR_IMG = "img";
+    private static final String STD_DIR_CSS = "css";
+    private static final String STD_DIR_JS = "js";
+    private static final String STD_DIR_GIT = ".git";
+    private static final String HTACCESS = ".htaccess";
+    private static final String FAVICON_ICO = "favicon.ico";
+    private static final String HUMANS_TXT = "humans.txt";
+    private static final String ROBOTS_TXT = "robots.txt";
+    private static final String SITEMAP_TXT = "sitemap.txt";
+    private static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
 
     private final DirectorySynchronizer directorySynchronizer;
-    private final String sourceDirectoryPath;
-    private final String destinationDirectoryPath;
+    private final Path sourceDirectoryPath;
+    private final Path destinationDirectoryPath;
 
     private TemplateEngine templateEngine;
 
-    private SiteGenerator(String sourceDirectoryPath, String destinationDirectoryPath) {
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath) {
         templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
@@ -62,7 +61,8 @@ public class SiteGenerator {
             throw new IllegalArgumentException(
                     "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
         } else {
-            return new SiteGenerator(cmdArguments.getSourceDirectory(), cmdArguments.getDestinationDirectory());
+            return new SiteGenerator(Paths.get(cmdArguments.getSourceDirectory()),
+                    Paths.get(cmdArguments.getDestinationDirectory()));
         }
     }
 
@@ -71,8 +71,8 @@ public class SiteGenerator {
      * @throws IOException
      */
     public void generate() throws IOException {
-        processPages(Paths.get(sourceDirectoryPath), Paths.get(destinationDirectoryPath));
-        processStaticResources(sourceDirectoryPath, destinationDirectoryPath);
+        processPages(sourceDirectoryPath, destinationDirectoryPath);
+        processAllStaticResources(sourceDirectoryPath, destinationDirectoryPath);
     }
 
     /**
@@ -81,12 +81,12 @@ public class SiteGenerator {
      */
     public void generateOnFileChange() throws IOException {
         WatchService watchService = FileSystems.getDefault().newWatchService();
-        WatchKey cssWatchKey = registerToWatchService(watchService, Paths.get(sourceDirectoryPath, STD_DIR_CSS));
-        WatchKey jsWatchKey = registerToWatchService(watchService, Paths.get(sourceDirectoryPath, STD_DIR_JS));
-        WatchKey imgWatchKey = registerToWatchService(watchService, Paths.get(sourceDirectoryPath, STD_DIR_IMG));
-        WatchKey htmlWatchKey = registerToWatchService(watchService, Paths.get(sourceDirectoryPath));
-        WatchKey layoutsWatchKey = registerToWatchService(watchService, Paths.get(sourceDirectoryPath, STD_DIR_LAYOUTS));
-        WatchKey partialsWatchKey = registerToWatchService(watchService, Paths.get(sourceDirectoryPath, STD_DIR_PARTIALS));
+        WatchKey cssWatchKey = registerToWatchService(watchService, sourceDirectoryPath.resolve(STD_DIR_CSS));
+        WatchKey jsWatchKey = registerToWatchService(watchService, sourceDirectoryPath.resolve(STD_DIR_JS));
+        WatchKey imgWatchKey = registerToWatchService(watchService, sourceDirectoryPath.resolve(STD_DIR_IMG));
+        WatchKey htmlWatchKey = registerToWatchService(watchService, sourceDirectoryPath);
+        WatchKey layoutsWatchKey = registerToWatchService(watchService, sourceDirectoryPath.resolve(STD_DIR_LAYOUTS));
+        WatchKey partialsWatchKey = registerToWatchService(watchService, sourceDirectoryPath.resolve(STD_DIR_PARTIALS));
 
         for (;;) {
             LOG.debug("In watcher loop");
@@ -110,18 +110,18 @@ public class SiteGenerator {
 
                 // TODO What if file changes interfere?
 
-                // TODO Add behaviour for the other folders
                 if (key == cssWatchKey) {
-                    syncCssResources(sourceDirectoryPath, destinationDirectoryPath);
+                    processStaticResources(sourceDirectoryPath.resolve(STD_DIR_CSS),
+                            destinationDirectoryPath.resolve(STD_DIR_CSS));
                 } else if (key == htmlWatchKey || key == layoutsWatchKey || key == partialsWatchKey) {
                     templateEngine.clearTemplateCache();
-                    buildPages(Paths.get(sourceDirectoryPath), Paths.get(destinationDirectoryPath));
+                    buildPages(sourceDirectoryPath, destinationDirectoryPath);
                 } else if (key == jsWatchKey) {
-                    processStaticResources(Paths.get(sourceDirectoryPath, STD_DIR_JS),
-                            Paths.get(destinationDirectoryPath, STD_DIR_JS));
+                    processStaticResources(sourceDirectoryPath.resolve(STD_DIR_JS),
+                            destinationDirectoryPath.resolve(STD_DIR_JS));
                 } else if (key == imgWatchKey) {
-                    processStaticResources(Paths.get(sourceDirectoryPath, STD_DIR_IMG),
-                            Paths.get(destinationDirectoryPath, STD_DIR_IMG));
+                    processStaticResources(sourceDirectoryPath.resolve(STD_DIR_IMG),
+                            destinationDirectoryPath.resolve(STD_DIR_IMG));
                 }
 
                 // Reset the key -- this step is critical if you want to
@@ -165,7 +165,7 @@ public class SiteGenerator {
                 for (Path htmlFile : htmlFilesStream) {
 
                     // Generate
-                    Path relativeFilePath = Paths.get(sourceDirectoryPath).relativize(htmlFile);
+                    Path relativeFilePath = sourceDirectoryPath.relativize(htmlFile);
                     List<String> lines = Collections.singletonList(
                             templateEngine.process(relativeFilePath.toString().replace(".html", ""), DEFAULT_THYMELEAF_CONTEXT));
 
@@ -183,7 +183,7 @@ public class SiteGenerator {
             try (DirectoryStream<Path> subDirStream =
                          Files.newDirectoryStream(sourceDir, entry -> Files.isDirectory(entry)
                                  && !isSpecialDir(entry)
-                                 && !Files.isSameFile(entry, Paths.get(destinationDirectoryPath)))) {
+                                 && !Files.isSameFile(entry, destinationDirectoryPath))) {
                 for (Path subDir : subDirStream) {
                     LOG.info("I'm going to build pages in this subdirectory [{}]", subDir);
                     buildPages(subDir, targetDir.resolve(subDir.getFileName()));
@@ -206,24 +206,20 @@ public class SiteGenerator {
         }
     }
 
-    private void processStaticResources(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
-        syncCssResources(sourceDirectoryPath, destinationDirectoryPath);
-        directorySynchronizer.sync(path(sourceDirectoryPath, STD_DIR_IMG), path(destinationDirectoryPath, STD_DIR_IMG));
-        directorySynchronizer.sync(path(sourceDirectoryPath, STD_DIR_JS), path(destinationDirectoryPath, STD_DIR_JS));
+    private void processAllStaticResources(Path sourceDirectoryPath, Path destinationDirectoryPath) throws IOException {
+        directorySynchronizer.sync(sourceDirectoryPath.resolve(STD_DIR_CSS), destinationDirectoryPath.resolve(STD_DIR_CSS));
+        directorySynchronizer.sync(sourceDirectoryPath.resolve(STD_DIR_IMG), destinationDirectoryPath.resolve(STD_DIR_IMG));
+        directorySynchronizer.sync(sourceDirectoryPath.resolve(STD_DIR_JS), destinationDirectoryPath.resolve(STD_DIR_JS));
     }
 
     private void processStaticResources(Path source, Path destination) throws IOException {
-        directorySynchronizer.sync(source.toAbsolutePath().toString(), destination.toString());
+        directorySynchronizer.sync(source, destination);
     }
 
-    private void syncCssResources(String sourceDirectoryPath, String destinationDirectoryPath) throws IOException {
-        directorySynchronizer.sync(path(sourceDirectoryPath, STD_DIR_CSS), path(destinationDirectoryPath, STD_DIR_CSS));
-    }
-
-    private TemplateEngine setupTemplateEngine(String sourceDirectoryPath) {
+    private TemplateEngine setupTemplateEngine(Path sourceDirectoryPath) {
         TemplateResolver rootTemplateResolver = newTemplateResolver(sourceDirectoryPath);
-        TemplateResolver partialsTemplateResolver = newTemplateResolver(sourceDirectoryPath + "/" + "_partials");
-        TemplateResolver layoutsTemplateResolver = newTemplateResolver(sourceDirectoryPath + "/" + "_layouts");
+        TemplateResolver partialsTemplateResolver = newTemplateResolver(sourceDirectoryPath.resolve("/_partials"));
+        TemplateResolver layoutsTemplateResolver = newTemplateResolver(sourceDirectoryPath.resolve("/_layouts"));
 
         TemplateEngine templateEngine = new TemplateEngine();
         templateEngine.addTemplateResolver(rootTemplateResolver);
@@ -235,19 +231,15 @@ public class SiteGenerator {
         return templateEngine;
     }
 
-    private TemplateResolver newTemplateResolver(String prefix) {
+    private TemplateResolver newTemplateResolver(Path prefix) {
         TemplateResolver templateResolver = new FileTemplateResolver();
 
         // Instead of 'HTML5' this template mode allows void elements such as meta to have no closing tags
         templateResolver.setTemplateMode("LEGACYHTML5");
-        templateResolver.setPrefix(prefix + "/");
+        templateResolver.setPrefix(prefix.toString() + "/");
         templateResolver.setSuffix(".html");
         templateResolver.setCharacterEncoding("UTF-8");
         return templateResolver;
-    }
-
-    private String path(String first, String... more) {
-        return Paths.get(first, more).toString();
     }
 
     private boolean isSpecialDir(Path dir) {
@@ -257,13 +249,5 @@ public class SiteGenerator {
                 dir.endsWith(STD_DIR_JS) ||
                 dir.endsWith(STD_DIR_IMG) ||
                 dir.endsWith(STD_DIR_GIT);
-    }
-
-    public static void main(String[] args) {
-        try {
-            new SiteGenerator("../test/www", "../test/site").generate();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 }
