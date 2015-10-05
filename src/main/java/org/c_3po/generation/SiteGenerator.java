@@ -37,9 +37,9 @@ public class SiteGenerator {
             entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && !htmlFilter.accept(entry);
 
     private TemplateEngine templateEngine;
-    private List<Path> ignorables;
+    private List<PathMatcher> ignorables;
 
-    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<Path> ignorables) {
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<PathMatcher> ignorables) {
         templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
@@ -200,17 +200,17 @@ public class SiteGenerator {
         return templateResolver;
     }
 
-    private static List<Path> readIgnorablesFromFile(Path baseDirectory) {
-        ArrayList<Path> ingnorablePaths = new ArrayList<>();
+    private static List<PathMatcher> readIgnorablesFromFile(Path baseDirectory) {
+        ArrayList<PathMatcher> ingnorablePaths = new ArrayList<>();
 
         Path c3poIgnoreFile = baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME);
         if (Files.exists(c3poIgnoreFile)) {
             if (Files.isRegularFile(c3poIgnoreFile) && Files.isReadable(c3poIgnoreFile)) {
                 try {
                     ingnorablePaths.addAll(Files.readAllLines(c3poIgnoreFile).stream()
-                            .map(baseDirectory::resolve)
+                            .map(path -> FileSystems.getDefault().getPathMatcher("glob:" + path))
                             .collect(Collectors.toList()));
-                    ingnorablePaths.add(c3poIgnoreFile);
+                    ingnorablePaths.add(FileSystems.getDefault().getPathMatcher("glob:" + C_3PO_IGNORE_FILE_NAME));
                     LOG.info("'{}' read successfully", C_3PO_IGNORE_FILE_NAME);
                 } catch (IOException e) {
                     LOG.error("Failed to read '{}' from '{}'. No files and directories will be ignored by C-3PO " +
@@ -229,10 +229,17 @@ public class SiteGenerator {
     }
 
     private boolean isIgnorablePath(Path path) throws IOException {
-        return Files.isSameFile(path, destinationDirectoryPath) || ignorables.contains(path);
+
+        // NOTE about performance: running through the list of PathMatchers and evaluating
+        // each of them for each path might be a performance bottleneck. A more efficient
+        // solution might be to only generate path matchers for true GLOB strings read in from
+        // .c3poignore. For non-GLOB strings a simple list of Path objects could be maintained with which
+        // comparison is done through its .contains method.
+        return Files.isSameFile(path, destinationDirectoryPath)
+                || ignorables.stream().anyMatch(pathMatcher -> pathMatcher.matches(path.normalize()));
     }
 
-    public void setIgnorables(List<Path> ignorables) {
+    public void setIgnorables(List<PathMatcher> ignorables) {
         if (this.ignorables == null) {
             this.ignorables = ignorables;
         } else {
