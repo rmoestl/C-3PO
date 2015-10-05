@@ -12,9 +12,11 @@ import org.thymeleaf.templateresolver.TemplateResolver;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardOpenOption.*;
 import static java.nio.file.StandardWatchEventKinds.*;
@@ -24,26 +26,24 @@ import static java.nio.file.StandardWatchEventKinds.*;
  */
 public class SiteGenerator {
     private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
-
-    // TODO remove those two as well after we've .c3poignore established
-    private static final String STD_DIR_GIT = ".git";
-    private static final String STD_DIR_IDEA = ".idea";
-
     private static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
+    private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
     private final DirectoryStream.Filter<Path> htmlFilter =
-            entry -> Files.isRegularFile(entry) && entry.toFile().getName().endsWith(".html");
+            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && entry.toFile().getName().endsWith(".html");
     private final DirectoryStream.Filter<Path> staticFileFilter =
-            entry -> Files.isRegularFile(entry) && !htmlFilter.accept(entry);
+            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && !htmlFilter.accept(entry);
 
     private TemplateEngine templateEngine;
+    private List<Path> ignorables;
 
-    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath) {
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<Path> ignorables) {
         templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
+        this.setIgnorables(ignorables);
     }
 
     /**
@@ -51,12 +51,13 @@ public class SiteGenerator {
      */
     public static SiteGenerator fromCmdArguments(CmdArguments cmdArguments) {
         Objects.requireNonNull(cmdArguments);
-        if (!Files.exists(Paths.get(cmdArguments.getSourceDirectory()))) {
+        Path sourceDirectoryPath = Paths.get(cmdArguments.getSourceDirectory());
+        if (!Files.exists(sourceDirectoryPath)) {
             throw new IllegalArgumentException(
                     "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
         } else {
-            return new SiteGenerator(Paths.get(cmdArguments.getSourceDirectory()),
-                    Paths.get(cmdArguments.getDestinationDirectory()));
+            return new SiteGenerator(sourceDirectoryPath,
+                    Paths.get(cmdArguments.getDestinationDirectory()), readIgnorablesFromFile(sourceDirectoryPath));
         }
     }
 
@@ -75,6 +76,7 @@ public class SiteGenerator {
     public void generateOnFileChange() throws IOException {
         WatchService watchService = FileSystems.getDefault().newWatchService();
         registerToWatchService(watchService, sourceDirectoryPath);
+        // TODO Watch for .c3poignore file changes
 
         for (;;) {
             WatchKey key;
@@ -99,7 +101,7 @@ public class SiteGenerator {
 
                 // Depending on type of resource let's build the whole site or just a portion
                 Path changedPath = (Path) event.context();
-                if (Files.isDirectory(changedPath) && !isIgnorableDir(changedPath) || htmlFilter.accept(changedPath)) {
+                if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath) || htmlFilter.accept(changedPath)) {
                     buildPages(sourceDirectoryPath, destinationDirectoryPath);
                 } else if (staticFileFilter.accept(changedPath)) {
                     Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
@@ -163,7 +165,7 @@ public class SiteGenerator {
 
             // Look for subdirectories that are to be processed by c-3po
             try (DirectoryStream<Path> subDirStream =
-                         Files.newDirectoryStream(sourceDir, entry -> Files.isDirectory(entry) && !isIgnorableDir(entry))) {
+                         Files.newDirectoryStream(sourceDir, entry -> Files.isDirectory(entry) && !isIgnorablePath(entry))) {
                 for (Path subDir : subDirStream) {
                     LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
                     buildPages(subDir, targetDir.resolve(subDir.getFileName()));
@@ -198,7 +200,43 @@ public class SiteGenerator {
         return templateResolver;
     }
 
-    private boolean isIgnorableDir(Path dir) throws IOException {
-        return dir.endsWith(STD_DIR_IDEA) || dir.endsWith(STD_DIR_GIT) || Files.isSameFile(dir, destinationDirectoryPath);
+    private static List<Path> readIgnorablesFromFile(Path baseDirectory) {
+        ArrayList<Path> ingnorablePaths = new ArrayList<>();
+
+        Path c3poIgnoreFile = baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME);
+        if (Files.exists(c3poIgnoreFile)) {
+            if (Files.isRegularFile(c3poIgnoreFile) && Files.isReadable(c3poIgnoreFile)) {
+                try {
+                    ingnorablePaths.addAll(Files.readAllLines(c3poIgnoreFile).stream()
+                            .map(baseDirectory::resolve)
+                            .collect(Collectors.toList()));
+                    ingnorablePaths.add(c3poIgnoreFile);
+                    LOG.info("'{}' read successfully", C_3PO_IGNORE_FILE_NAME);
+                } catch (IOException e) {
+                    LOG.error("Failed to read '{}' from '{}'. No files and directories will be ignored by C-3PO " +
+                            "during processing", C_3PO_IGNORE_FILE_NAME, c3poIgnoreFile, e);
+                }
+            } else {
+                LOG.info("Invalid '{}' file found. Make sure it's a regular file and readable", C_3PO_IGNORE_FILE_NAME);
+            }
+        } else {
+            LOG.info("No '{}' file detected in directory '{}'. " +
+                    "In a '{}' file you can exclude files and folders from being processed by C-3PO",
+                    C_3PO_IGNORE_FILE_NAME, baseDirectory, C_3PO_IGNORE_FILE_NAME);
+        }
+
+        return ingnorablePaths;
+    }
+
+    private boolean isIgnorablePath(Path path) throws IOException {
+        return Files.isSameFile(path, destinationDirectoryPath) || ignorables.contains(path);
+    }
+
+    public void setIgnorables(List<Path> ignorables) {
+        if (this.ignorables == null) {
+            this.ignorables = ignorables;
+        } else {
+            // TODO diff ignorables and update target dir (edge cases)
+        }
     }
 }
