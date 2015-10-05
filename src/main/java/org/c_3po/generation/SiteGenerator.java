@@ -74,7 +74,6 @@ public class SiteGenerator {
     public void generateOnFileChange() throws IOException {
         WatchService watchService = FileSystems.getDefault().newWatchService();
         registerToWatchService(watchService, sourceDirectoryPath);
-        // TODO Watch for .c3poignore file changes
 
         for (;;) {
             WatchKey key;
@@ -99,11 +98,16 @@ public class SiteGenerator {
 
                 // Depending on type of resource let's build the whole site or just a portion
                 Path changedPath = (Path) event.context();
-                if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath) || htmlFilter.accept(changedPath)) {
-                    buildPages(sourceDirectoryPath, destinationDirectoryPath);
-                } else if (staticFileFilter.accept(changedPath)) {
-                    Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
-                    buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
+                if (Files.exists(changedPath) && Files.isSameFile(changedPath, sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME))) {
+                    setIgnorables(readIgnorablesFromFile(sourceDirectoryPath));
+                } else {
+                    if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath) || htmlFilter.accept(changedPath)) {
+                        buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                    } else if (staticFileFilter.accept(changedPath)) {
+                        Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
+                        buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
+                    }
+                    // TODO handle when path has been deleted: also delete it in target directory
                 }
 
                 // Reset the key -- this step is critical if you want to
