@@ -245,7 +245,7 @@ public class SiteGenerator {
         List<Ignorable> addedIgnorables = new ArrayList<>(ignorables);
 
         if (this.ignorables != null) {
-            addedIgnorables.removeAll(this.ignorables); // TODO do we need to take care about Ignorable's equals and hashcode?
+            addedIgnorables.removeAll(this.ignorables);
         }
 
         try {
@@ -337,6 +337,19 @@ public class SiteGenerator {
 
         PathMatcher toPathMatcher() {
             return toPathMatcher("");
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Ignorable ignorable = (Ignorable) o;
+            return Objects.equals(globPattern, ignorable.globPattern);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(globPattern);
         }
     }
 }
