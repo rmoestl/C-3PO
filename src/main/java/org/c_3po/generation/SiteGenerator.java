@@ -9,6 +9,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
@@ -73,12 +74,12 @@ public class SiteGenerator {
      */
     public void generateOnFileChange() throws IOException {
         WatchService watchService = FileSystems.getDefault().newWatchService();
-        registerToWatchService(watchService, sourceDirectoryPath);
+        Map<WatchKey, Path> watchKeyMap = registerWatchServices(sourceDirectoryPath, watchService);
 
         for (;;) {
             WatchKey key;
             try {
-                LOG.debug("In watcher loop waiting for a new change notification");
+                LOG.trace("In watcher loop waiting for a new change notification");
                 key = watchService.take();
             } catch (InterruptedException ex) {
                 return; // stops the infinite loop
@@ -101,7 +102,19 @@ public class SiteGenerator {
                 if (Files.exists(changedPath) && Files.isSameFile(changedPath, sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME))) {
                     setIgnorables(readIgnorablesFromFile(sourceDirectoryPath));
                 } else {
-                    if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath) || htmlFilter.accept(changedPath)) {
+                    Path parent = watchKeyMap.get(key);
+                    changedPath = parent.resolve(changedPath);
+                    if (htmlFilter.accept(changedPath)) {
+                        buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                    } else if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath)) {
+                        if (kind == ENTRY_CREATE) {
+                            watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
+                            LOG.debug("Registered autoBuild watcher for '{}", changedPath);
+                        } else if (kind == ENTRY_DELETE) {
+                            key.cancel();
+                            watchKeyMap.remove(key);
+                            LOG.debug("Cancelled autoBuild watcher for '{}", changedPath);
+                        }
                         buildPages(sourceDirectoryPath, destinationDirectoryPath);
                     } else if (staticFileFilter.accept(changedPath)) {
                         Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
@@ -121,10 +134,33 @@ public class SiteGenerator {
         }
     }
 
-    private WatchKey registerToWatchService(WatchService watchService, Path pathToWatch) throws IOException {
-        return Files.exists(pathToWatch)
-                ? pathToWatch.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
-                : null;
+    private Map<WatchKey, Path> registerWatchServices(Path rootDirectory, WatchService watchService) throws IOException {
+        Map<WatchKey, Path> watchKeyMap = new HashMap<>();
+
+        Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                Objects.requireNonNull(dir);
+                Objects.requireNonNull(attrs);
+                if (!isIgnorablePath(dir)) {
+                    watchKeyMap.put(registerWatchService(watchService, dir), dir);
+                    return FileVisitResult.CONTINUE;
+                } else {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+            }
+        });
+
+        watchKeyMap.values().stream().forEach(path -> LOG.debug("Registered autoBuild watcher for '{}", path));
+        return watchKeyMap;
+    }
+
+    private WatchKey registerWatchService(WatchService watchService, Path pathToWatch) throws IOException {
+        if (Files.exists(pathToWatch)) {
+            return pathToWatch.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+        } else {
+            throw new FileNotFoundException(String.format("Path '%s' to watch does not exist", pathToWatch));
+        }
     }
 
     private void buildPages(Path sourceDir, Path targetDir) throws IOException {
@@ -288,7 +324,7 @@ public class SiteGenerator {
     }
 
     private void deleteDirectory(Path dir) throws IOException {
-        Files.walkFileTree(dir, new SimpleFileVisitor<Path>(){
+        Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 Files.delete(file);
