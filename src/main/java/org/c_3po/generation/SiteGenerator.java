@@ -104,23 +104,42 @@ public class SiteGenerator {
                 } else {
                     Path parent = watchKeyMap.get(key);
                     changedPath = parent.resolve(changedPath);
-                    if (htmlFilter.accept(changedPath)) {
-                        buildPages(sourceDirectoryPath, destinationDirectoryPath);
-                    } else if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath)) {
-                        if (kind == ENTRY_CREATE) {
-                            watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
-                            LOG.debug("Registered autoBuild watcher for '{}", changedPath);
-                        } else if (kind == ENTRY_DELETE) {
-                            key.cancel();
-                            watchKeyMap.remove(key);
-                            LOG.debug("Cancelled autoBuild watcher for '{}", changedPath);
+
+                    if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
+                        if (htmlFilter.accept(changedPath)) {
+                            buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                        } else if (staticFileFilter.accept(changedPath)) {
+                            Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
+                            buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
+                        } else if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath)) {
+                            if (kind == ENTRY_CREATE) {
+                                watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
+                                LOG.debug("Registered autoBuild watcher for '{}", changedPath);
+                            }
+                            buildPages(sourceDirectoryPath, destinationDirectoryPath);
                         }
-                        buildPages(sourceDirectoryPath, destinationDirectoryPath);
-                    } else if (staticFileFilter.accept(changedPath)) {
-                        Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
-                        buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
+
+                    } else if (kind == ENTRY_DELETE) {
+                        if (!isIgnorablePath(changedPath)) {
+                            Path targetPath = destinationDirectoryPath.resolve(changedPath);
+
+                            // Delete files and directories in target directory
+                            if (Files.exists(targetPath)) {
+                                if (Files.isDirectory(targetPath)) {
+                                    deleteDirectory(targetPath);
+                                } else {
+                                    Files.deleteIfExists(destinationDirectoryPath.resolve(changedPath));
+                                }
+                            }
+
+                            // Cancel watcher for the path if there was one registered
+                            if (watchKeyMap.get(key).equals(changedPath)) {
+                                key.cancel();
+                                watchKeyMap.remove(key);
+                                LOG.debug("Cancelled autoBuild watcher for '{}", changedPath);
+                            }
+                        }
                     }
-                    // TODO handle when path has been deleted: also delete it in target directory
                 }
 
                 // Reset the key -- this step is critical if you want to
@@ -274,7 +293,7 @@ public class SiteGenerator {
         // .c3poignore. For non-GLOB strings a simple list of Path objects could be maintained with which
         // comparison is done through its .contains method.
         return ignorables.stream().anyMatch(ignorable -> ignorable.toPathMatcher().matches(path.normalize()))
-                || Files.exists(destinationDirectoryPath) && Files.isSameFile(path, destinationDirectoryPath);
+                || Files.exists(destinationDirectoryPath) && Files.exists(path) && Files.isSameFile(path, destinationDirectoryPath);
     }
 
     private void setIgnorables(List<Ignorable> ignorables) {
