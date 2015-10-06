@@ -273,8 +273,8 @@ public class SiteGenerator {
         // solution might be to only generate path matchers for true GLOB strings read in from
         // .c3poignore. For non-GLOB strings a simple list of Path objects could be maintained with which
         // comparison is done through its .contains method.
-        return Files.isSameFile(path, destinationDirectoryPath)
-                || ignorables.stream().anyMatch(ignorable -> ignorable.toPathMatcher().matches(path.normalize()));
+        return ignorables.stream().anyMatch(ignorable -> ignorable.toPathMatcher().matches(path.normalize()))
+                || Files.exists(destinationDirectoryPath) && Files.isSameFile(path, destinationDirectoryPath);
     }
 
     private void setIgnorables(List<Ignorable> ignorables) {
@@ -285,7 +285,9 @@ public class SiteGenerator {
         }
 
         try {
-            removeIgnorables(addedIgnorables, destinationDirectoryPath);
+            if (Files.exists(destinationDirectoryPath)) {
+                removeIgnorables(addedIgnorables, destinationDirectoryPath);
+            }
         } catch (IOException e) {
             LOG.error("IO error occurred when removing ignored files from target directory '{}'", destinationDirectoryPath, e);
         }
