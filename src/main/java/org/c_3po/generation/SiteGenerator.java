@@ -1,6 +1,7 @@
 package org.c_3po.generation;
 
 import nz.net.ultraq.thymeleaf.LayoutDialect;
+import nz.net.ultraq.thymeleaf.decorators.strategies.GroupingStrategy;
 import org.c_3po.cmd.CmdArguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -241,7 +242,7 @@ public class SiteGenerator {
         templateEngine.addTemplateResolver(partialsTemplateResolver);
         templateEngine.addTemplateResolver(layoutsTemplateResolver);
 
-        templateEngine.addDialect(new LayoutDialect());
+        templateEngine.addDialect(new LayoutDialect(new GroupingStrategy()));
 
         return templateEngine;
     }
