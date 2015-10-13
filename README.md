@@ -86,7 +86,7 @@ tasks.md
 
 ### How to build C-3PO?
 
-C-3PO builds with [Gradle 2.0](https://docs.gradle.org/2.0/userguide/userguide.html) and uses it's [application plugin](https://docs.gradle.org/2.0/userguide/application_plugin.html).
+C-3PO builds with [Gradle 2.0](https://docs.gradle.org/2.0/userguide/userguide.html) and uses its [application plugin](https://docs.gradle.org/2.0/userguide/application_plugin.html).
 
 - *gradle build* ... builds (compile, test etc.) the project
 - *gradle distZip* ... creates a ZIP-packaged distribution of C-3PO
