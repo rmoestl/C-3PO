@@ -10,13 +10,11 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.nio.file.StandardOpenOption.*;
 import static java.nio.file.StandardWatchEventKinds.*;
@@ -37,13 +35,13 @@ public class SiteGenerator {
             entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && !htmlFilter.accept(entry);
 
     private TemplateEngine templateEngine;
-    private List<Ignorable> ignorables;
+    private IgnorablesMatcher ignorablesMatcher;
 
-    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<Ignorable> ignorables) {
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> ignorables) {
         templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
-        this.setIgnorables(ignorables);
+        this.ignorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, ignorables);
     }
 
     /**
@@ -52,12 +50,12 @@ public class SiteGenerator {
     public static SiteGenerator fromCmdArguments(CmdArguments cmdArguments) {
         Objects.requireNonNull(cmdArguments);
         Path sourceDirectoryPath = Paths.get(cmdArguments.getSourceDirectory());
-        if (!Files.exists(sourceDirectoryPath)) {
+        if (Files.exists(sourceDirectoryPath)) {
+            return new SiteGenerator(sourceDirectoryPath,
+                    Paths.get(cmdArguments.getDestinationDirectory()), readIgnorables(sourceDirectoryPath));
+        } else {
             throw new IllegalArgumentException(
                     "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
-        } else {
-            return new SiteGenerator(sourceDirectoryPath,
-                    Paths.get(cmdArguments.getDestinationDirectory()), readIgnorablesFromFile(sourceDirectoryPath));
         }
     }
 
@@ -67,6 +65,8 @@ public class SiteGenerator {
      */
     public void generate() throws IOException {
         buildPages(sourceDirectoryPath, destinationDirectoryPath);
+
+        // TODO Check if there are any files in destination directory that are to be ignored (e.g. because ignore file has changed since last generation)
     }
 
     /**
@@ -101,7 +101,7 @@ public class SiteGenerator {
                 // Depending on type of resource let's build the whole site or just a portion
                 Path changedPath = (Path) event.context();
                 if (Files.exists(changedPath) && Files.isSameFile(changedPath, sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME))) {
-                    setIgnorables(readIgnorablesFromFile(sourceDirectoryPath));
+                    updateIgnorables(readIgnorables(sourceDirectoryPath));
                 } else {
                     Path parent = watchKeyMap.get(key);
                     changedPath = parent.resolve(changedPath);
@@ -160,9 +160,7 @@ public class SiteGenerator {
         Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                Objects.requireNonNull(dir);
-                Objects.requireNonNull(attrs);
-                if (!isIgnorablePath(dir)) {
+                if (!isIgnorablePath(Objects.requireNonNull(dir).normalize())) {
                     watchKeyMap.put(registerWatchService(watchService, dir), dir);
                     return FileVisitResult.CONTINUE;
                 } else {
@@ -223,7 +221,8 @@ public class SiteGenerator {
 
             // Look for subdirectories that are to be processed by c-3po
             try (DirectoryStream<Path> subDirStream =
-                         Files.newDirectoryStream(sourceDir, entry -> Files.isDirectory(entry) && !isIgnorablePath(entry))) {
+                         Files.newDirectoryStream(sourceDir,
+                                 entry -> Files.isDirectory(entry) && !isIgnorablePath(entry.normalize()))) {
                 for (Path subDir : subDirStream) {
                     LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
                     buildPages(subDir, targetDir.resolve(subDir.getFileName()));
@@ -233,18 +232,19 @@ public class SiteGenerator {
     }
 
     private TemplateEngine setupTemplateEngine(Path sourceDirectoryPath) {
-        TemplateResolver rootTemplateResolver = newTemplateResolver(sourceDirectoryPath);
-        TemplateResolver partialsTemplateResolver = newTemplateResolver(sourceDirectoryPath.resolve("/_partials"));
-        TemplateResolver layoutsTemplateResolver = newTemplateResolver(sourceDirectoryPath.resolve("/_layouts"));
-
         TemplateEngine templateEngine = new TemplateEngine();
-        templateEngine.addTemplateResolver(rootTemplateResolver);
-        templateEngine.addTemplateResolver(partialsTemplateResolver);
-        templateEngine.addTemplateResolver(layoutsTemplateResolver);
 
+        // Note: we need two FileTemplateResolvers
+        // one that is able to deal with absolute path template names like 'D:/data/dev/blog/index'
+        // and one that is able to resolve relative path template names like '_layouts/main-layout'
+        templateEngine.addTemplateResolver(newTemplateResolver(sourceDirectoryPath.toAbsolutePath()));
+        templateEngine.addTemplateResolver(newTemplateResolver());
         templateEngine.addDialect(new LayoutDialect(new GroupingStrategy()));
-
         return templateEngine;
+    }
+
+    private TemplateResolver newTemplateResolver() {
+        return newTemplateResolver(null);
     }
 
     private TemplateResolver newTemplateResolver(Path prefix) {
@@ -252,93 +252,65 @@ public class SiteGenerator {
 
         // Instead of 'HTML5' this template mode allows void elements such as meta to have no closing tags
         templateResolver.setTemplateMode("LEGACYHTML5");
-        templateResolver.setPrefix(prefix.toString() + "/");
+        templateResolver.setPrefix(prefix != null ? prefix.toString() + "/" : "");
         templateResolver.setSuffix(".html");
         templateResolver.setCharacterEncoding("UTF-8");
         return templateResolver;
     }
 
-    private static List<Ignorable> readIgnorablesFromFile(Path baseDirectory) {
-        ArrayList<Ignorable> ingnorablePaths = new ArrayList<>();
-
-        Path c3poIgnoreFile = baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME);
-        if (Files.exists(c3poIgnoreFile)) {
-            if (Files.isRegularFile(c3poIgnoreFile) && Files.isReadable(c3poIgnoreFile)) {
-                try {
-                    ingnorablePaths.addAll(Files.readAllLines(c3poIgnoreFile).stream()
-                            .map(Ignorable::new)
-                            .collect(Collectors.toList()));
-                    ingnorablePaths.add(new Ignorable(C_3PO_IGNORE_FILE_NAME));
-                    LOG.info("'{}' read successfully", C_3PO_IGNORE_FILE_NAME);
-                } catch (IOException e) {
-                    LOG.error("Failed to read '{}' from '{}'. No files and directories will be ignored by C-3PO " +
-                            "during processing", C_3PO_IGNORE_FILE_NAME, c3poIgnoreFile, e);
-                }
-            } else {
-                LOG.info("Invalid '{}' file found. Make sure it's a regular file and readable", C_3PO_IGNORE_FILE_NAME);
-            }
-        } else {
-            LOG.info("No '{}' file detected in directory '{}'. " +
-                    "In a '{}' file you can exclude files and folders from being processed by C-3PO",
-                    C_3PO_IGNORE_FILE_NAME, baseDirectory, C_3PO_IGNORE_FILE_NAME);
-        }
-
-        return ingnorablePaths;
+    private static List<String> readIgnorables(Path baseDirectory) {
+        return Ignorables.read(baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME));
     }
 
     private boolean isIgnorablePath(Path path) throws IOException {
-
-        // Note about performance: running through the list of PathMatchers and evaluating
-        // each of them for each path might be a performance bottleneck. A more efficient
-        // solution might be to only generate path matchers for true GLOB strings read in from
-        // .c3poignore. For non-GLOB strings a simple list of Path objects could be maintained with which
-        // comparison is done through its .contains method.
-        return ignorables.stream().anyMatch(ignorable -> ignorable.toPathMatcher().matches(path.normalize()))
+        return ignorablesMatcher.matches(path)
                 || Files.exists(destinationDirectoryPath) && Files.exists(path) && Files.isSameFile(path, destinationDirectoryPath);
     }
 
-    private void setIgnorables(List<Ignorable> ignorables) {
-        List<Ignorable> addedIgnorables = new ArrayList<>(ignorables);
-
-        if (this.ignorables != null) {
-            addedIgnorables.removeAll(this.ignorables);
-        }
-
+    private void updateIgnorables(List<String> newIgnorables) {
+        List<String> addedIgnorables = new ArrayList<>(newIgnorables);
+        addedIgnorables.removeAll(this.ignorablesMatcher.getGlobPatterns());
         try {
-            if (Files.exists(destinationDirectoryPath)) {
+            if (!addedIgnorables.isEmpty() && Files.exists(destinationDirectoryPath)) {
+                LOG.debug("Removing added ignorables '{}' after ignorables update", addedIgnorables);
                 removeIgnorables(addedIgnorables, destinationDirectoryPath);
             }
         } catch (IOException e) {
             LOG.error("IO error occurred when removing ignored files from target directory '{}'", destinationDirectoryPath, e);
         }
 
-        // Note: No action needed when file patterns have been **removed** from ignorables since
+        // Note: No action needed when file patterns have been **removed** from newIgnorables since
         // these should be included when c-3po processes the site the next time
 
-        this.ignorables = new ArrayList<>(ignorables);
+        this.ignorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, newIgnorables);
     }
 
-    private void removeIgnorables(List<Ignorable> ignorables, Path rootDirectory) throws IOException {
+    /**
+     * Removes the files and directories defined by ignorables from withing the given rootDirectory.
+     *
+     * @param ignorables a list of glob patterns defining the files and directories to remove
+     * @param rootDirectory the root directory
+     * @throws IOException
+     */
+    private void removeIgnorables(List<String> ignorables, Path rootDirectory) throws IOException {
+        final IgnorablesMatcher ignorablesMatcher = IgnorablesMatcher.from(rootDirectory, ignorables);
+
         Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                for (Ignorable ignorable : ignorables) {
-                    if (ignorable.toPathMatcher(rootDirectory.toString()).matches(dir)) {
-                        LOG.debug("Deleting directory '{}'", dir);
-                        deleteDirectory(dir);
-                        return FileVisitResult.SKIP_SUBTREE;
-                    }
+                if (ignorablesMatcher.matches(rootDirectory.relativize(dir).normalize())) {
+                    LOG.debug("Deleting directory '{}'", dir);
+                    deleteDirectory(dir);
+                    return FileVisitResult.SKIP_SUBTREE;
                 }
                 return FileVisitResult.CONTINUE;
             }
 
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                for (Ignorable ignorable : ignorables) {
-                    if (ignorable.toPathMatcher(rootDirectory.toString()).matches(file)) {
-                        LOG.debug("Deleting file '{}'", file);
-                        Files.delete(file);
-                    }
+                if (ignorablesMatcher.matches(rootDirectory.relativize(file).normalize())) {
+                    LOG.debug("Deleting file '{}'", file);
+                    Files.delete(file);
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -369,45 +341,5 @@ public class SiteGenerator {
                 }
             }
         });
-    }
-
-    /**
-     * Helper class representing an ignorable file or directory.
-     */
-    private static class Ignorable {
-        private final String globPattern;
-        private final Map<String, PathMatcher> cache = new HashMap<>(2);
-
-        Ignorable(String globPattern) {
-            this.globPattern = globPattern;
-        }
-
-        PathMatcher toPathMatcher(String prefix) {
-            Objects.requireNonNull(prefix);
-            if (cache.containsKey(prefix)) {
-                return cache.get(prefix);
-            } else {
-                PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + ("".equals(prefix) ? "" : prefix + "/") + globPattern);
-                cache.put(prefix, pathMatcher);
-                return pathMatcher;
-            }
-        }
-
-        PathMatcher toPathMatcher() {
-            return toPathMatcher("");
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Ignorable ignorable = (Ignorable) o;
-            return Objects.equals(globPattern, ignorable.globPattern);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(globPattern);
-        }
     }
 }
