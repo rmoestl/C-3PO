@@ -74,6 +74,8 @@ public class SiteGenerator {
      * @throws IOException
      */
     public void generateOnFileChange() throws IOException {
+        buildPages(sourceDirectoryPath, destinationDirectoryPath);
+
         WatchService watchService = FileSystems.getDefault().newWatchService();
         Map<WatchKey, Path> watchKeyMap = registerWatchServices(sourceDirectoryPath, watchService);
 
