@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'groovy'
 apply plugin: 'application'
 
 sourceCompatibility = 1.8
@@ -36,4 +37,5 @@ dependencies {
     testCompile group: 'spock-core', name: 'spock-core', version: '1.0', transitive: false
 }
 
+installApp.dependsOn test
 
