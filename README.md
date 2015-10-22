@@ -56,6 +56,30 @@ example:
 - *js/vendor/* --> third-party JavaScript files
 - *img/* --> image files
 
+
+### Settings
+
+C-3PO looks for a **.c3posettings** file in the top-level source directory. It's a Java standard properties file
+holding configuration preferences.
+
+Here is a list of available settings:
+
+- baseUrl ... the base URL of the deployed website. If not set, C-3PO does not generate a sitemap.xml file.
+
+
+### Generating sitemap.xml and robots.txt
+
+C-3PO is able to generate a `sitemap.xml` (as specified at http://www.sitemaps.org) file and a `robots.txt` file.
+In order to generate a sitemap.xml, C-3PO requires **two prerequisites** to be fulfilled:
+
+- there must not exist a sitemap.xml file in the source directory (the same is true for robots.txt)
+- the **baseUrl** (e.g. http://yodaconditions.net) setting must be set in `.c3posettings`
+
+C-3P0 puts the URL of the sitemap.xml file into the robots.txt file since this gives search crawlers a hint
+where to look for a sitemap file.
+
+**Heads up!** Generation of sitemap.xml and robots.txt is not supported in *autoBuild* mode.
+
 ### Ignoring certain files
 
 You'll want to ignore certain files, e.g. the .git folder. Place a text file

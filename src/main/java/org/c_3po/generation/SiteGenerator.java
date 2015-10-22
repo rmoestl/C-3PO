@@ -3,6 +3,10 @@ package org.c_3po.generation;
 import nz.net.ultraq.thymeleaf.LayoutDialect;
 import nz.net.ultraq.thymeleaf.decorators.strategies.GroupingStrategy;
 import org.c_3po.cmd.CmdArguments;
+import org.c_3po.generation.crawl.RobotsGenerator;
+import org.c_3po.generation.crawl.SiteStructure;
+import org.c_3po.generation.crawl.SitemapGenerator;
+import org.c_3po.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.TemplateEngine;
@@ -26,9 +30,11 @@ public class SiteGenerator {
     private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
     private static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
+    private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
+    private final Properties settings;
     private final DirectoryStream.Filter<Path> htmlFilter =
             entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && entry.toFile().getName().endsWith(".html");
     private final DirectoryStream.Filter<Path> staticFileFilter =
@@ -37,10 +43,12 @@ public class SiteGenerator {
     private TemplateEngine templateEngine;
     private IgnorablesMatcher ignorablesMatcher;
 
-    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> ignorables) {
-        templateEngine = setupTemplateEngine(sourceDirectoryPath);
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> ignorables,
+                          Properties settings) {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
+        this.settings = settings;
+        this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.ignorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, ignorables);
     }
 
@@ -51,12 +59,28 @@ public class SiteGenerator {
         Objects.requireNonNull(cmdArguments);
         Path sourceDirectoryPath = Paths.get(cmdArguments.getSourceDirectory());
         if (Files.exists(sourceDirectoryPath)) {
+            Path settingsFilePath = sourceDirectoryPath.resolve(C_3PO_SETTINGS_FILE_NAME);
+            Properties settings = null;
+            try {
+                settings = readSettings(settingsFilePath);
+            } catch (IOException e) {
+                LOG.warn("Failed to load settings from file '{}'", settingsFilePath);
+            }
+
             return new SiteGenerator(sourceDirectoryPath,
-                    Paths.get(cmdArguments.getDestinationDirectory()), readIgnorables(sourceDirectoryPath));
+                    Paths.get(cmdArguments.getDestinationDirectory()), getIgnorables(sourceDirectoryPath), settings);
         } else {
             throw new IllegalArgumentException(
                     "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
         }
+    }
+
+    private static Properties readSettings(Path settingsFilePath) throws IOException {
+        Properties properties = new Properties();
+        if (Files.exists(settingsFilePath)) {
+            properties.load(Files.newInputStream(settingsFilePath));
+        }
+        return properties;
     }
 
     /**
@@ -65,6 +89,7 @@ public class SiteGenerator {
      */
     public void generate() throws IOException {
         buildPages(sourceDirectoryPath, destinationDirectoryPath);
+        buildCrawlFiles(sourceDirectoryPath, destinationDirectoryPath);
 
         // TODO Check if there are any files in destination directory that are to be ignored (e.g. because ignore file has changed since last generation)
     }
@@ -103,7 +128,7 @@ public class SiteGenerator {
                 // Depending on type of resource let's build the whole site or just a portion
                 Path changedPath = (Path) event.context();
                 if (Files.exists(changedPath) && Files.isSameFile(changedPath, sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME))) {
-                    updateIgnorables(readIgnorables(sourceDirectoryPath));
+                    updateIgnorables(getIgnorables(sourceDirectoryPath));
                 } else {
                     Path parent = watchKeyMap.get(key);
                     changedPath = parent.resolve(changedPath);
@@ -233,6 +258,54 @@ public class SiteGenerator {
         }
     }
 
+    /**
+     * Builds the crawling-related files based on the given directory.
+     *
+     * @param websiteGeneratedDir the path to the directory in which the entire generated website is located in
+     */
+    private void buildCrawlFiles(Path websiteSourceDir, Path websiteGeneratedDir) {
+        String sitemapFileName = "sitemap.xml";
+        String baseUrl = settings.getProperty("baseUrl");
+
+        if (!Files.exists(websiteSourceDir.resolve(sitemapFileName)) && !StringUtils.isBlank(baseUrl)) {
+            try {
+                Path sitemapFilePath = websiteGeneratedDir.resolve(sitemapFileName);
+                SiteStructure siteStructure = SiteStructure.getInstance(baseUrl);
+                Files.walkFileTree(websiteGeneratedDir, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        if (file.toString().endsWith(".html")) {
+                            siteStructure.add(websiteGeneratedDir.relativize(file));
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+                LOG.info("Building a sitemap xml file");
+                try {
+                    SitemapGenerator.generate(siteStructure, sitemapFilePath);
+
+                    // Robots.txt file
+                    if (!Files.exists(websiteSourceDir.resolve(RobotsGenerator.ROBOTS_TXT_FILE_NAME))) {
+                        try {
+                            LOG.info("Building a robots.txt file");
+                            RobotsGenerator.generate(websiteGeneratedDir, StringUtils.trimmedJoin("/", baseUrl, sitemapFileName));
+                        } catch (GenerationException e) {
+                            LOG.warn("Wasn't able to generate a '{}' file. Proceeding.",
+                                    RobotsGenerator.ROBOTS_TXT_FILE_NAME,  e);
+                        }
+                    } else {
+                        LOG.info("Found a robots.txt file in '{}'. Tip: ensure that the URL to the sitemap.xml " +
+                                "file is included in robots.txt.", websiteSourceDir);
+                    }
+                } catch (GenerationException e) {
+                    LOG.warn("Failed to generate sitemap xml file", e);
+                }
+            } catch (IOException e) {
+                LOG.warn("Failed to generate sitemap file.", e);
+            }
+        }
+    }
+
     private TemplateEngine setupTemplateEngine(Path sourceDirectoryPath) {
         TemplateEngine templateEngine = new TemplateEngine();
 
@@ -260,8 +333,18 @@ public class SiteGenerator {
         return templateResolver;
     }
 
-    private static List<String> readIgnorables(Path baseDirectory) {
-        return Ignorables.read(baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME));
+    private static List<String> getIgnorables(Path baseDirectory) {
+        List<String> ignorables = new ArrayList<>();
+
+        // System standard ignorables
+        ignorables.add(C_3PO_IGNORE_FILE_NAME);
+        ignorables.add(C_3PO_SETTINGS_FILE_NAME);
+
+        // User-specific ignorables
+        List<String> ignorablesFromFile = Ignorables.read(baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME));
+        ignorables.addAll(ignorablesFromFile);
+
+        return ignorables;
     }
 
     private boolean isIgnorablePath(Path path) throws IOException {

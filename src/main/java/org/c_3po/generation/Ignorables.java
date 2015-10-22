@@ -33,7 +33,6 @@ class Ignorables {
             if (Files.isRegularFile(ignoreFile) && Files.isReadable(ignoreFile)) {
                 try {
                     ignorablePaths = Files.readAllLines(ignoreFile);
-                    ignorablePaths.add(ignoreFileFileName.toString());
                     LOG.info("'{}' read successfully", ignoreFileFileName);
                 } catch (IOException e) {
                     LOG.error("Failed to read '{}' from '{}'. No files and directories will be ignored by C-3PO " +
@@ -50,5 +49,4 @@ class Ignorables {
 
         return ignorablePaths;
     }
-
 }

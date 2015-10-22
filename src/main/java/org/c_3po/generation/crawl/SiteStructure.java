@@ -1,4 +1,4 @@
-package org.c_3po.generation.sitemap;
+package org.c_3po.generation.crawl;
 
 import java.nio.file.Path;
 import java.util.*;

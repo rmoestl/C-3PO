@@ -1,11 +1,11 @@
-package org.c_3po.generation.sitemap
+package org.c_3po.generation.crawl
 
 import spock.lang.Specification
 
 import java.nio.file.Paths
 
 /**
- * Created by robert on 19.10.2015.
+ * Unit tests for {@link SiteStructure}.
  */
 class SiteStructureTest extends Specification {
     def "test that .add throws NPE"() {
