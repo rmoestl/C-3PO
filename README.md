@@ -75,7 +75,7 @@ In order to generate a sitemap.xml, C-3PO requires **two prerequisites** to be f
 - there must not exist a sitemap.xml file in the source directory (the same is true for robots.txt)
 - the **baseUrl** (e.g. http://yodaconditions.net) setting must be set in `.c3posettings`
 
-C-3P0 puts the URL of the sitemap.xml file into the robots.txt file since this gives search crawlers a hint
+C-3PO puts the URL of the sitemap.xml file into the robots.txt file since this gives search crawlers a hint
 where to look for a sitemap file.
 
 **Heads up!** Generation of sitemap.xml and robots.txt is not supported in *autoBuild* mode.
