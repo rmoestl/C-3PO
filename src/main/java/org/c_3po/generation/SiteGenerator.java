@@ -226,16 +226,20 @@ public class SiteGenerator {
                     LOG.trace("Generate '{}'", htmlFile);
 
                     // Generate
-                    List<String> lines = Collections.singletonList(
-                            templateEngine.process(htmlFile.toString().replace(".html", ""), DEFAULT_THYMELEAF_CONTEXT));
-
-                    // Write to file
-                    Path destinationPath = targetDir.resolve(htmlFile.getFileName());
                     try {
-                        Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
-                    } catch (IOException e) {
-                        LOG.error("Failed to write generated document to {}", destinationPath, e);
+                        List<String> lines = Collections.singletonList(
+                                templateEngine.process(htmlFile.toString().replace(".html", ""), DEFAULT_THYMELEAF_CONTEXT));
+                        // Write to file
+                        Path destinationPath = targetDir.resolve(htmlFile.getFileName());
+                        try {
+                            Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
+                        } catch (IOException e) {
+                            LOG.error("Failed to write generated document to {}", destinationPath, e);
+                        }
+                    } catch (RuntimeException ex) {
+                        LOG.warn("Thymeleaf failed to process '{}'. Reason: '{}'", htmlFile, ex.getMessage());
                     }
+
                 }
             }
 
