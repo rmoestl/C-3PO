@@ -105,6 +105,34 @@ tasks.md
 *.sample
 ```
 
+## FAQ for Website Editing
+
+### When using Thymeleaf's Layout dialect how to pass parameters from a template to its layout?
+When you use a decorator-based layout, you may want to pass parameters from
+the content template to the layout template. To accomplish this simply use
+`th:with` in the content template like this:
+
+```
+<html layout:decorator="_layouts/main-layout" th:with="activeMainNavEntry='home'">
+```
+
+This is useful for example when
+the main navigation is defined in the layout page and you want to control
+which navigation entry is rendered as active.
+
+### How to control which navigation entry is active when using Thymeleaf's Layout dialect?
+Assuming you're using Thymeleaf's [Layout dialect](https://github.com/ultraq/thymeleaf-layout-dialect)
+in conjunction with decorator-based layouts there are two possibilities:
+
+- Evaluate the standard `${execInfo.templateName}` in the layout template to determine
+which template is currently being decorated. This is useful for smaller sites,
+probably without a sub navigation.
+- Pass a parameter, for example `activeMainNavEntry`, to the layout template and
+and evaluate it when rendering the navigation. This is more useful for larger
+sites where you want to control a main and a sub-navigation and the name of
+the template currently being decorated doesn't reflect the main navigation category
+that is supposed to be shown as active.
+
 
 ## Development
 
