@@ -31,16 +31,21 @@ public class SiteGenerator {
     private static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
     private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
+    public static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
     private final Properties settings;
     private final DirectoryStream.Filter<Path> htmlFilter =
             entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && entry.toFile().getName().endsWith(".html");
+    private final DirectoryStream.Filter<Path> markdownFilter =
+            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && entry.toFile().getName().endsWith(".md");
     private final DirectoryStream.Filter<Path> staticFileFilter =
-            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && !htmlFilter.accept(entry);
+            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && !htmlFilter.accept(entry)
+                    && !markdownFilter.accept(entry);
 
     private TemplateEngine templateEngine;
+    private MarkdownProcessor markdownProcessor;
     private IgnorablesMatcher ignorablesMatcher;
 
     private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> ignorables,
@@ -49,6 +54,7 @@ public class SiteGenerator {
         this.destinationDirectoryPath = destinationDirectoryPath;
         this.settings = settings;
         this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
+        this.markdownProcessor = MarkdownProcessor.getInstance();
         this.ignorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, ignorables);
     }
 
@@ -240,6 +246,39 @@ public class SiteGenerator {
                         LOG.warn("Thymeleaf failed to process '{}'. Reason: '{}'", htmlFile, ex.getMessage());
                     }
 
+                }
+            }
+
+            // Look for Markdown files to generate
+            try (DirectoryStream<Path> markdownFilesStream = Files.newDirectoryStream(sourceDir, markdownFilter)) {
+                Iterator<Path> iterator = markdownFilesStream.iterator();
+                if (iterator.hasNext()) {
+                    Path markdownTemplatePath = sourceDir.resolve(CONVENTIONAL_MARKDOWN_TEMPLATE_NAME);
+                    if (Files.exists(markdownTemplatePath)) {
+                        String markdownTemplateName = markdownTemplatePath.toString().replace(".html", "");
+                        while (iterator.hasNext()) {
+                            final Path markdownFile = iterator.next();
+                            try {
+                                // Process markdown
+                                String htmlString = markdownProcessor.process(markdownFile);
+
+                                // Integrate into Thymeleaf template
+                                Context context = new Context();
+                                context.setVariable("markdownContent", htmlString);
+                                String result = templateEngine.process(markdownTemplateName, context);
+
+                                // Write result to file
+                                Path destinationPath = targetDir.resolve(markdownFile.getFileName().toString().replace(".md", ".html"));
+                                Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
+                                        WRITE, TRUNCATE_EXISTING);
+                            } catch (IOException e) {
+                                LOG.error("Failed to generate document from markdown '{}': [{}]", markdownFile, e.getMessage());
+                            }
+                        }
+                    } else {
+                        LOG.warn("Not processing markdown files in '{}' because expected template file '{}' is missing",
+                                sourceDir, markdownTemplatePath + ".html");
+                    }
                 }
             }
 
