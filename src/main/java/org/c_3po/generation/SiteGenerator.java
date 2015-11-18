@@ -142,7 +142,7 @@ public class SiteGenerator {
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
                         if (htmlFilter.accept(changedPath)) {
                             buildPages(sourceDirectoryPath, destinationDirectoryPath);
-                        } else if (staticFileFilter.accept(changedPath)) {
+                        } else if (staticFileFilter.accept(changedPath) || markdownFilter.accept(changedPath)) {
                             Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
                             buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
                         } else if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath)) {
