@@ -261,11 +261,12 @@ public class SiteGenerator {
                             final Path markdownFile = iterator.next();
                             try {
                                 // Process markdown
-                                String htmlString = markdownProcessor.process(markdownFile);
+                                MarkdownProcessor.Result mdResult = markdownProcessor.process(markdownFile);
 
                                 // Integrate into Thymeleaf template
                                 Context context = new Context();
-                                context.setVariable("markdownContent", htmlString);
+                                context.setVariable("markdownContent", mdResult.getContentResult());
+                                context.setVariable("markdownHead", mdResult.getHeadResult());
                                 String result = templateEngine.process(markdownTemplateName, context);
 
                                 // Write result to file
