@@ -6,6 +6,7 @@ import org.c_3po.cmd.CmdArguments;
 import org.c_3po.generation.crawl.RobotsGenerator;
 import org.c_3po.generation.crawl.SiteStructure;
 import org.c_3po.generation.crawl.SitemapGenerator;
+import org.c_3po.generation.markdown.MarkdownProcessor;
 import org.c_3po.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
