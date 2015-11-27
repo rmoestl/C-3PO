@@ -105,6 +105,66 @@ tasks.md
 *.sample
 ```
 
+### Using Markdown
+C-3PO allows you to write in markdown. To be precise [commonmark](http://commonmark.org/) is used. Why? Because it's an effort to standardize markdown syntax.
+
+**Anyways, how do you use markdown with C-3PO?**
+
+Create a markdown file. Then create a Thymeleaf template called `md-template.html` in the same directory. Within `md-template.html` you are able to access two `context` objects called `markdownContent` (the HTML elements that result from processing the markdown file as a `String`) and `markdownHead` (an object representing `meta` tags and `title` to be included in the page's `head`; further description below). `md-template.html` is simply a wrapper for the markdown content that allows us to integrate with the site's layout and so on.
+
+**Head up!** If C-3PO does not find a file called `md-template.html` in the directory, it will not process the markdown file.
+
+Example of a `md-template.html` file:
+
+```
+<!DOCTYPE html>
+<html layout:decorator="_layouts/main-layout">
+	<head>
+		<title th:text="${markdownHead.title}"></title>
+		<meta th:each="metaTagEntry : ${markdownHead.metaTags}"
+			th:name="${metaTagEntry.key}"
+			th:content="${metaTagEntry.value}">
+	</head>
+	<body>
+		<div layout:fragment="content">
+			<div th:utext="${markdownContent}">
+				This is replaced by markdown based blog content.
+			</div>
+	</body>
+</html>
+```
+
+Note the use of `th:utext` to spit out the HTML string in `markdownContent`. Beware that `th:utext` renders **unescaped** text.
+
+#### Define HTML title and meta tags in markdown
+C-3PO introduced an extension to commonmark allowing editors to define the `title` and `meta tags` for the resulting HTML page.
+
+**Why is this useful?**
+
+1. Reader Experience: people like when browser tabs show meaningful titles
+2. SERPs: the contents of the `meta description` tag is shown on *search engine result pages (SERP)*. Ideally a description is 150 to 160 characters long. A good meta description will raise the chances that search engine users click through to your site.
+
+**So, how do I define these meta tags?**
+
+```
+$meta-title: A catchy page title
+$meta-description: A summary that describes the contents (ideally 150 to 160 characters)
+
+# Some heading
+...
+```
+
+They must start with `$meta-`. Everything between `$meta-` and the colon `:` will become the name of the meta tag. The rest after the colon `:` will be the content of the meta tag. When processing a markdown file, C-3PO will put this data as an object called `markdownHead` into the template's context. You'll be able to use the `markdownHead` object in the Thymeleaf template file `md-template.html` like this:
+
+```
+<title th:text="${markdownHead.title}"></title>
+<meta th:each="metaTagEntry : ${markdownHead.metaTags}"
+  th:name="${metaTagEntry.key}"
+  th:content="${metaTagEntry.value}">
+```
+
+
+
 ## FAQ for Website Editing
 
 ### When using Thymeleaf's Layout dialect how to pass parameters from a template to its layout?
