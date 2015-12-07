@@ -25,7 +25,7 @@ public class MarkdownProcessor {
     private MarkdownProcessor() {
         List<Extension> extensions = Collections.singletonList(MetaTagsParserExtension.getInstance());
         this.parser = Parser.builder().extensions(extensions).build();
-        this.htmlRenderer = HtmlRenderer.builder().escapeHtml(true).build();
+        this.htmlRenderer = HtmlRenderer.builder().build();
     }
 
     public static MarkdownProcessor getInstance() {

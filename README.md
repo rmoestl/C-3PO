@@ -112,7 +112,9 @@ C-3PO allows you to write in markdown. To be precise [commonmark](http://commonm
 
 Create a markdown file. Then create a Thymeleaf template called `md-template.html` in the same directory. Within `md-template.html` you are able to access two `context` objects called `markdownContent` (the HTML elements that result from processing the markdown file as a `String`) and `markdownHead` (an object representing `meta` tags and `title` to be included in the page's `head`; further description below). `md-template.html` is simply a wrapper for the markdown content that allows us to integrate with the site's layout and so on.
 
-**Head up!** If C-3PO does not find a file called `md-template.html` in the directory, it will not process the markdown file.
+**Heads up!** If C-3PO does not find a file called `md-template.html` in the directory, it will not process the markdown file.
+
+**Heads up!** C-3PO does not do HTML escaping of markdown content itself since markdown allows to have inline HTML markup like `<cite>` in markdown text.
 
 Example of a `md-template.html` file:
 
