@@ -60,6 +60,7 @@ class IgnorablesMatcherTest extends Specification {
         path | isMatching
         "./_layouts" | true
         "_layouts" | true
-        "site/_layouts" | false
+        "site/_layouts" | true
+        "site/site/_layouts" | false
     }
 }

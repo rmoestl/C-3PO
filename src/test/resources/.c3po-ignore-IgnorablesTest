@@ -1,0 +1,7 @@
+_layouts [ed]
+_fragments [ed]
+private [es]
+temp files
+temp/*.md
+.git
+.idea

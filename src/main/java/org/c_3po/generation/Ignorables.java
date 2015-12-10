@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Noninstantiable utility class responsible for reading C-3PO ignore file.
@@ -21,19 +23,38 @@ class Ignorables {
     }
 
     /**
-     * Reads the contents of an ignore file and returns a list of strings representing glob patterns.
+     * Reads the contents of an ignore file and returns a list of strings as glob patterns that represent
+     * files and directories that should be ignored completely.
      * @param ignoreFile the path to the ignore file
      * @return a list of glob pattern strings (without 'glob:' prefix)
      */
-    static List<String> read(Path ignoreFile) {
+    static List<String> readCompleteIgnorables(Path ignoreFile) {
+        return read(ignoreFile, line -> !line.matches(".*\\s\\[[a-z, ]*\\]\\s*$"));
+    }
+
+    /**
+     * Reads the contents of an ignore file and returns a list of strings as glob patterns that represent
+     * files and directories that should be ignored only when generating a sitemap.
+     * @param ignoreFile the path to the ignore file
+     * @return a list of glob pattern strings (without 'glob:' prefix)
+     */
+    static List<String> readSitemapIgnorables(Path ignoreFile) {
+        return read(ignoreFile, line -> line.matches(".*\\s\\[[a-z, ]*es[a-z, ]*\\]\\s*$"));
+    }
+
+    private static List<String> read(Path ignoreFile, Predicate<? super String> filter) {
         List<String> ignorablePaths = new ArrayList<>();
         Path ignoreFileFileName = ignoreFile.getFileName();
 
         if (Files.exists(ignoreFile)) {
             if (Files.isRegularFile(ignoreFile) && Files.isReadable(ignoreFile)) {
                 try {
-                    ignorablePaths = Files.readAllLines(ignoreFile);
-                    LOG.info("'{}' read successfully", ignoreFileFileName);
+                    ignorablePaths = Files.readAllLines(ignoreFile)
+                            .stream()
+                            .filter(filter)
+                            .map(line -> line.replaceAll("\\s\\[[a-z, ]*\\]\\s*$", ""))
+                            .collect(Collectors.toList());
+                    LOG.info("'{}' read ignorables file successfully", ignoreFileFileName);
                 } catch (IOException e) {
                     LOG.error("Failed to read '{}' from '{}'. No files and directories will be ignored by C-3PO " +
                             "during processing", ignoreFileFileName, ignoreFile, e);

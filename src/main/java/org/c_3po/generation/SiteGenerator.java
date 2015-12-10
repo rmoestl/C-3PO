@@ -315,12 +315,23 @@ public class SiteGenerator {
         if (!Files.exists(websiteSourceDir.resolve(sitemapFileName)) && !StringUtils.isBlank(baseUrl)) {
             try {
                 Path sitemapFilePath = websiteGeneratedDir.resolve(sitemapFileName);
+                IgnorablesMatcher sitemapIgnorablesMatcher = IgnorablesMatcher.from(websiteGeneratedDir,
+                        Ignorables.readSitemapIgnorables(websiteSourceDir.resolve(C_3PO_IGNORE_FILE_NAME)));
                 SiteStructure siteStructure = SiteStructure.getInstance(baseUrl);
                 Files.walkFileTree(websiteGeneratedDir, new SimpleFileVisitor<Path>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        if (file.toString().endsWith(".html")) {
+                        if (file.toString().endsWith(".html") && !sitemapIgnorablesMatcher.matches(file)) {
                             siteStructure.add(websiteGeneratedDir.relativize(file));
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                        if (sitemapIgnorablesMatcher.matches(dir)) {
+                            LOG.debug("Ignoring directory '{}' for sitemap generation", dir.toAbsolutePath());
+                            return FileVisitResult.SKIP_SUBTREE;
                         }
                         return FileVisitResult.CONTINUE;
                     }
@@ -386,7 +397,7 @@ public class SiteGenerator {
         ignorables.add(C_3PO_SETTINGS_FILE_NAME);
 
         // User-specific ignorables
-        List<String> ignorablesFromFile = Ignorables.read(baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME));
+        List<String> ignorablesFromFile = Ignorables.readCompleteIgnorables(baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME));
         ignorables.addAll(ignorablesFromFile);
 
         return ignorables;
