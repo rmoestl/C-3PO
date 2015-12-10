@@ -75,8 +75,9 @@ In order to generate a sitemap.xml, C-3PO requires **two prerequisites** to be f
 - there must not exist a sitemap.xml file in the source directory (the same is true for robots.txt)
 - the **baseUrl** (e.g. http://yodaconditions.net) setting must be set in `.c3posettings`
 
-C-3PO puts the URL of the sitemap.xml file into the robots.txt file since this gives search crawlers a hint
-where to look for a sitemap file.
+Sometimes it's also desirable to exclude URLs from being crawled. This can be done in the `.c3poignore` file as described in the corresponding section.
+
+When there is no `robots.txt` in the source folder, the C-3PO generates a minimal one putting the URL of sitemap.xml into it. This gives search crawlers a hint where to look for a sitemap file.
 
 **Heads up!** Generation of sitemap.xml and robots.txt is not supported in *autoBuild* mode.
 
@@ -103,6 +104,19 @@ tasks.md
 .gitattributes
 .gitignore
 *.sample
+```
+
+#### Ignoring files for sitemap generation only
+
+As already mentioned in the **sitemap generation** section, C-3PO allows to ignore files and directories only in the context of sitemap generation. Simply place `es` (*exlude in sitemap*) within square brackets `[...]` after an entry of `.c3poignore`.
+
+In the following example the directory `private` is only excluded in terms of sitemap generation:
+
+```
+.git
+.idea
+tasks.md
+private [es]
 ```
 
 ### Using Markdown
