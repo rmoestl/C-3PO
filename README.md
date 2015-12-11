@@ -119,6 +119,21 @@ tasks.md
 private [es]
 ```
 
+#### Ignoring output of files for destination folder
+
+Most likely you'll have a Thymeleaf layout file somewhere in the project that is an important part of the end result but that should not end up in the build directory itself. Given a `_layouts/main-layout.html` file you can exclude it from the build directory with the `[er]` modifier like this:
+
+```
+.git
+.idea
+tasks.md
+private [es]
+_layouts [er]
+```
+
+**Heads Up!** Those files and directories still trigger a build when being modified in *autoBuild* mode.
+
+
 ### Using Markdown
 C-3PO allows you to write in markdown. To be precise [commonmark](http://commonmark.org/) is used. Why? Because it's an effort to standardize markdown syntax.
 

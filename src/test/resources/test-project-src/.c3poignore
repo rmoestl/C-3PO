@@ -1,7 +1,8 @@
-_layouts [ed]
+_layouts [er]
 _fragments [ed]
 private [es]
 temp files
 temp/*.md
 .git
 .idea
+blog/cta-fragment.html [er]

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html layout:decorator="_layouts/main-layout" th:with="activeMainNavEntry='blog'">
+<head>
+	<base href="../">
+	<title th:text="${markdownHead.title}"></title>
+	<meta th:each="metaTagEntry : ${markdownHead.metaTags}"
+		  th:name="${metaTagEntry.key}"
+		  th:content="${metaTagEntry.value}">
+</head>
+<body>
+<div layout:fragment="content">
+	<div th:utext="${markdownContent}">
+		This is replaced by markdown based blog content.
+	</div>
+	<a href="blog.html">&laquo;&nbsp;Back</a>
+</div>
+</body>
+</html>

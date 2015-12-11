@@ -32,31 +32,33 @@ public class SiteGenerator {
     private static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
     private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
-    public static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
+    private static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
     private final Properties settings;
     private final DirectoryStream.Filter<Path> htmlFilter =
-            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && entry.toFile().getName().endsWith(".html");
+            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".html");
     private final DirectoryStream.Filter<Path> markdownFilter =
-            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && entry.toFile().getName().endsWith(".md");
+            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".md");
     private final DirectoryStream.Filter<Path> staticFileFilter =
-            entry -> Files.isRegularFile(entry) && !isIgnorablePath(entry) && !htmlFilter.accept(entry)
+            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && !htmlFilter.accept(entry)
                     && !markdownFilter.accept(entry);
+    private final TemplateEngine templateEngine;
+    private final MarkdownProcessor markdownProcessor;
 
-    private TemplateEngine templateEngine;
-    private MarkdownProcessor markdownProcessor;
-    private IgnorablesMatcher ignorablesMatcher;
+    private IgnorablesMatcher completeIgnorablesMatcher;
+    private IgnorablesMatcher resultIgnorablesMatcher;
 
-    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> ignorables,
-                          Properties settings) {
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> completeIgnorables,
+                          List<String> resultIgnorables, Properties settings) {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
         this.settings = settings;
         this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.markdownProcessor = MarkdownProcessor.getInstance();
-        this.ignorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, ignorables);
+        this.completeIgnorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, completeIgnorables);
+        this.resultIgnorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, resultIgnorables);
     }
 
     /**
@@ -75,7 +77,7 @@ public class SiteGenerator {
             }
 
             return new SiteGenerator(sourceDirectoryPath,
-                    Paths.get(cmdArguments.getDestinationDirectory()), getIgnorables(sourceDirectoryPath), settings);
+                    Paths.get(cmdArguments.getDestinationDirectory()), getCompleteIgnorables(sourceDirectoryPath), Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)), settings);
         } else {
             throw new IllegalArgumentException(
                     "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
@@ -135,7 +137,7 @@ public class SiteGenerator {
                 // Depending on type of resource let's build the whole site or just a portion
                 Path changedPath = (Path) event.context();
                 if (Files.exists(changedPath) && Files.isSameFile(changedPath, sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME))) {
-                    updateIgnorables(getIgnorables(sourceDirectoryPath));
+                    updateIgnorables(changedPath);
                 } else {
                     Path parent = watchKeyMap.get(key);
                     changedPath = parent.resolve(changedPath);
@@ -146,16 +148,15 @@ public class SiteGenerator {
                         } else if (staticFileFilter.accept(changedPath) || markdownFilter.accept(changedPath)) {
                             Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
                             buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
-                        } else if (Files.isDirectory(changedPath) && !isIgnorablePath(changedPath)) {
+                        } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
                             if (kind == ENTRY_CREATE) {
                                 watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
-                                LOG.debug("Registered autoBuild watcher for '{}", changedPath);
+                                LOG.debug("Registered autoBuild watcher for '{}'", changedPath);
                             }
                             buildPages(sourceDirectoryPath, destinationDirectoryPath);
                         }
-
                     } else if (kind == ENTRY_DELETE) {
-                        if (!isIgnorablePath(changedPath)) {
+                        if (!isCompleteIgnorable(changedPath) && !isResultIgnorable(changedPath)) {
                             Path targetPath = destinationDirectoryPath.resolve(changedPath);
 
                             // Delete files and directories in target directory
@@ -194,7 +195,7 @@ public class SiteGenerator {
         Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if (!isIgnorablePath(Objects.requireNonNull(dir).normalize())) {
+                if (!isCompleteIgnorable(Objects.requireNonNull(dir).normalize())) {
                     watchKeyMap.put(registerWatchService(watchService, dir), dir);
                     return FileVisitResult.CONTINUE;
                 } else {
@@ -294,7 +295,8 @@ public class SiteGenerator {
             // Look for subdirectories that are to be processed by c-3po
             try (DirectoryStream<Path> subDirStream =
                          Files.newDirectoryStream(sourceDir,
-                                 entry -> Files.isDirectory(entry) && !isIgnorablePath(entry.normalize()))) {
+                                 entry -> Files.isDirectory(entry) && !isCompleteIgnorable(entry.normalize())
+                                         && !isResultIgnorable(entry.normalize()))) {
                 for (Path subDir : subDirStream) {
                     LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
                     buildPages(subDir, targetDir.resolve(subDir.getFileName()));
@@ -389,7 +391,10 @@ public class SiteGenerator {
         return templateResolver;
     }
 
-    private static List<String> getIgnorables(Path baseDirectory) {
+    /**
+     * Reads complete ignorables from ignore file and adds C-3PO standard files.
+     */
+    private static List<String> getCompleteIgnorables(Path baseDirectory) {
         List<String> ignorables = new ArrayList<>();
 
         // System standard ignorables
@@ -403,14 +408,30 @@ public class SiteGenerator {
         return ignorables;
     }
 
-    private boolean isIgnorablePath(Path path) throws IOException {
-        return ignorablesMatcher.matches(path)
+    private boolean isCompleteIgnorable(Path path) throws IOException {
+        return completeIgnorablesMatcher.matches(path)
                 || Files.exists(destinationDirectoryPath) && Files.exists(path) && Files.isSameFile(path, destinationDirectoryPath);
     }
 
-    private void updateIgnorables(List<String> newIgnorables) {
+    private boolean isResultIgnorable(Path path) throws IOException {
+        return resultIgnorablesMatcher.matches(path)
+                || Files.exists(destinationDirectoryPath) && Files.exists(path) && Files.isSameFile(path, destinationDirectoryPath);
+    }
+
+    private void updateIgnorables(Path ignorablesFile) {
+        List<String> newCompleteIgnorables = getCompleteIgnorables(ignorablesFile);
+        List<String> newResultIgnorables = Ignorables.readResultIgnorables(ignorablesFile);
+
+        cleanOutputFromAddedIgnorables(newCompleteIgnorables, completeIgnorablesMatcher.getGlobPatterns());
+        cleanOutputFromAddedIgnorables(newResultIgnorables, resultIgnorablesMatcher.getGlobPatterns());
+
+        this.completeIgnorablesMatcher = IgnorablesMatcher.from(destinationDirectoryPath, newCompleteIgnorables);
+        this.resultIgnorablesMatcher = IgnorablesMatcher.from(destinationDirectoryPath, newResultIgnorables);
+    }
+
+    private void cleanOutputFromAddedIgnorables(List<String> newIgnorables, List<String> presentIgnorables) {
         List<String> addedIgnorables = new ArrayList<>(newIgnorables);
-        addedIgnorables.removeAll(this.ignorablesMatcher.getGlobPatterns());
+        addedIgnorables.removeAll(presentIgnorables);
         try {
             if (!addedIgnorables.isEmpty() && Files.exists(destinationDirectoryPath)) {
                 LOG.debug("Removing added ignorables '{}' after ignorables update", addedIgnorables);
@@ -422,8 +443,6 @@ public class SiteGenerator {
 
         // Note: No action needed when file patterns have been **removed** from newIgnorables since
         // these should be included when c-3po processes the site the next time
-
-        this.ignorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, newIgnorables);
     }
 
     /**

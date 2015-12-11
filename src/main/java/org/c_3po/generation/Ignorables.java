@@ -42,6 +42,17 @@ class Ignorables {
         return read(ignoreFile, line -> line.matches(".*\\s\\[[a-z, ]*es[a-z, ]*\\]\\s*$"));
     }
 
+    /**
+     * Reads the contents of an ignore file and returns a list of strings as glob patterns that represent
+     * files and directories that should not produce output but still should trigger builds when being modified
+     * in autoBuild mode.
+     * @param ignoreFile the path to the ignore file
+     * @return a list of glob pattern strings (without 'glob:' prefix)
+     */
+    public static List<String> readResultIgnorables(Path ignoreFile) {
+        return read(ignoreFile, line -> line.matches(".*\\s\\[[a-z, ]*er[a-z, ]*\\]\\s*$"));
+    }
+
     private static List<String> read(Path ignoreFile, Predicate<? super String> filter) {
         List<String> ignorablePaths = new ArrayList<>();
         Path ignoreFileFileName = ignoreFile.getFileName();
