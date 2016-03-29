@@ -10,7 +10,7 @@ involves good layout support (like Tiles).
 ## Requirements
 
 C-3PO requires a Java 8 JRE installed on you computer. Upon installation you
-also need Gradle 2.0 installed.
+also need Gradle 2.12 installed.
 
 
 ## Setup
@@ -18,7 +18,7 @@ also need Gradle 2.0 installed.
 At the moment only installing from source is supported. Follow these steps
 
 - ensure a Java SE JDK 8 is installed on your computer
-- ensure Gradle 2.0 is installed on your computer
+- ensure Gradle 2.12 is installed on your computer
 - clone C-3PO's repository to your machine
 - in the repository's root directory call `gradle installApp`
 - add the directory **_build/install/C-3PO/bin_** to your **PATH**
@@ -229,7 +229,7 @@ that is supposed to be shown as active.
 
 ### How to build C-3PO?
 
-C-3PO builds with [Gradle 2.0](https://docs.gradle.org/2.0/userguide/userguide.html) and uses its [application plugin](https://docs.gradle.org/2.0/userguide/application_plugin.html).
+C-3PO builds with [Gradle 2.12](https://docs.gradle.org/2.12/userguide/userguide.html) and uses its [application plugin](https://docs.gradle.org/2.12/userguide/application_plugin.html).
 
 - *gradle build* ... builds (compile, test etc.) the project
 - *gradle distZip* ... creates a ZIP-packaged distribution of C-3PO
