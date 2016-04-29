@@ -234,6 +234,28 @@ sites where you want to control a main and a sub-navigation and the name of
 the template currently being decorated doesn't reflect the main navigation category
 that is supposed to be shown as active.
 
+### How to avoid obsolete <div> elements resulting from a decorator-based layout (layout dialect)?
+Usually you do something like this in your `layout.html`
+
+```
+...
+<div layout:fragment="content">
+  <!-- This will be replaced by content from content template -->
+</div>
+...
+```
+
+... and in your content template `content1.html` something like this
+
+```
+...
+<div layout:fragment="content">
+  <h1>Foo Bar</h1>
+</div>
+...
+```
+
+But what if you want to include page-specific scripts that way? The `div` elements would surround the `script` declarations. In this case just replace `div` elements with `th:block` elements in both the `decorator` (the layout) and the `content template` (the content page).
 
 ## Development
 
