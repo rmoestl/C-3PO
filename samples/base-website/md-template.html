@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html layout:decorator="_layouts/main-layout">
+	<head>
+		<title th:text="${markdownHead.title}"></title>
+		<meta th:each="metaTagEntry : ${markdownHead.metaTags}"
+			th:name="${metaTagEntry.key}"
+			th:content="${metaTagEntry.value}">
+	</head>
+	<body>
+		<div layout:fragment="content">
+			<div th:utext="${markdownContent}">
+				This is replaced by markdown based resources content.
+			</div>
+		</div>
+	</body>
+</html>

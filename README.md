@@ -57,6 +57,16 @@ example:
 - *img/* --> image files
 
 
+### Samples
+C-3PO comes with a sample website that would server as a good starting point for creating a new website. Take a look at `samples/base-website`.
+The sample website illustrates how to:
+- configure `.c3poignore` to ignore certain files
+- configure `.c3posettings` to trigger convenience functions like creating a sitemap.xml file
+- show how to use Thymeleaf's decorator-based layout system (Thymeleaf layout dialect)
+- show how to use **markdown** to created web pages faster and in a more convenient way
+- include useful stuff for web development like **CSS resets** and a **HTML5 shiv** takes makes older browsers recognize new HTML5 elements
+Building the sample website is done like this: `c-3po -src samples/base-website -dest <your-dir-of-choice>`.
+
 ### Settings
 
 C-3PO looks for a **.c3posettings** file in the top-level source directory. It's a Java standard properties file

@@ -1,0 +1,145 @@
+/* ****** */
+/* Resets */
+/* ****** */
+
+::-moz-selection {
+    background: #b3d4fc;
+    text-shadow: none;
+}
+
+::selection {
+    background: #b3d4fc;
+    text-shadow: none;
+}
+
+html {
+  font-size: 1em;
+  line-height: 1.4;
+}
+
+hr {
+    display: block;
+    height: 1px;
+    border: 0;
+    border-top: 1px solid #ccc;
+    margin: 1em 0;
+    padding: 0;
+}
+
+textarea {
+    resize: vertical;
+}
+
+/* ****** */
+/* Layout */
+/* ****** */
+
+footer {
+  text-align: center;
+  margin: 3em 0;
+}
+
+
+/* ******* */
+/* Styling */
+/* ******* */
+
+html {
+  background-color: #FAFFFA;
+  color: #4D4D4A;
+  font-family: 'Raleway', sans-serif;
+}
+
+.logo {
+  display: block;
+  margin: 1em auto 0;
+}
+
+h1 {
+  color: #A8A880;
+  text-align: center;
+  font-size: 1.5em;
+}
+
+h2 {
+  text-transform: uppercase;
+  margin: 1.5em 0 1em;
+  margin: 0.5em 0;
+  font-size: 1.125em;
+}
+
+.copyright-notice {
+  color: #9A9;
+  font-size: 0.875em;
+}
+
+
+/* ******* */
+/* Helpers */
+/* ******* */
+
+.underline {
+  text-decoration: underline;
+}
+
+.desktop-only {
+  display: none;
+}
+
+.clearfix:before,
+.clearfix:after {
+    content: " ";
+    display: table;
+}
+
+.clearfix:after {
+    clear: both;
+}
+
+.clearfix {
+    *zoom: 1;
+}
+
+
+/* ************* */
+/* Media Queries */
+/* ************* */
+
+@media only screen and (min-width: 48em) { /*768px*/
+
+  /* Reset mobile rules*/
+  .mobile-only {
+    display: none;
+  }
+
+  .desktop-only {
+    display: inherit;
+  }
+
+  /* Desktop layout */
+  .container {
+    margin: 0 auto;
+    max-width: 46em;
+  }
+
+  /* Desktop styles */
+  h1 {
+    font-size: 2.5em;
+    text-align: left;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+
+  .logo {
+    margin: 1.825em 0;
+  }
+
+}
+
+@media only screen and (min-width: 74em) { /*1184px*/
+  .container {
+    max-width: 74em;
+  }
+}
