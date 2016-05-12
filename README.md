@@ -50,7 +50,7 @@ C-3PO does not require a certain project structure.
 However, it is recommended to follow well-established standards. Here's an
 example:
 
-- *css/* --> your own CSS stylesheets
+- *css/* --> your own CSS or SASS stylesheets
 - *css/vendor* --> thired-party CSS stylesheets
 - *js/* --> your own JavaScript files
 - *js/vendor/* --> third-party JavaScript files
@@ -204,6 +204,16 @@ They must start with `$meta-`. Everything between `$meta-` and the colon `:` wil
   th:content="${metaTagEntry.value}">
 ```
 
+
+### Using SASS / SCSS
+C-3PO is able to process **SASS / SCSS** stylesheets. SASS / SCSS is a **CSS preprocessor** and enables you to use useful things
+like **selector nesting** or **variables** in your stylesheets. Read more about it at <http://sass-lang.com>.
+
+Beware that there's a difference between `.scss` and `sass` files. E.g. in `.sass` files you can omit curly brackets and the
+indentation level of your code is important. However, seemingly the SASS owners introduced SCSS later on because
+SASS was causing some confusion.
+
+See the sample project **samples/base-website** for a basic SASS example.
 
 
 ## FAQ for Website Editing

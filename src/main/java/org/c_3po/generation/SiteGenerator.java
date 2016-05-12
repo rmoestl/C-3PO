@@ -1,5 +1,6 @@
 package org.c_3po.generation;
 
+import io.bit3.jsass.CompilationException;
 import nz.net.ultraq.thymeleaf.LayoutDialect;
 import nz.net.ultraq.thymeleaf.decorators.strategies.GroupingStrategy;
 import org.c_3po.cmd.CmdArguments;
@@ -7,6 +8,7 @@ import org.c_3po.generation.crawl.RobotsGenerator;
 import org.c_3po.generation.crawl.SiteStructure;
 import org.c_3po.generation.crawl.SitemapGenerator;
 import org.c_3po.generation.markdown.MarkdownProcessor;
+import org.c_3po.generation.sass.SassProcessor;
 import org.c_3po.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,11 +43,15 @@ public class SiteGenerator {
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".html");
     private final DirectoryStream.Filter<Path> markdownFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".md");
+    private final DirectoryStream.Filter<Path> sassFilter =
+            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) &&
+                    (entry.toFile().getName().endsWith(".sass") || entry.toFile().getName().endsWith(".scss"));
     private final DirectoryStream.Filter<Path> staticFileFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && !htmlFilter.accept(entry)
-                    && !markdownFilter.accept(entry);
+                    && !markdownFilter.accept(entry) && !sassFilter.accept(entry);
     private final TemplateEngine templateEngine;
     private final MarkdownProcessor markdownProcessor;
+    private final SassProcessor sassProcessor;
 
     private IgnorablesMatcher completeIgnorablesMatcher;
     private IgnorablesMatcher resultIgnorablesMatcher;
@@ -57,6 +63,7 @@ public class SiteGenerator {
         this.settings = settings;
         this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.markdownProcessor = MarkdownProcessor.getInstance();
+        this.sassProcessor = SassProcessor.getInstance();
         this.completeIgnorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, completeIgnorables);
         this.resultIgnorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, resultIgnorables);
     }
@@ -281,6 +288,22 @@ public class SiteGenerator {
                     } else {
                         LOG.warn("Not processing markdown files in '{}' because expected template file '{}' is missing",
                                 sourceDir, markdownTemplatePath + ".html");
+                    }
+                }
+            }
+
+            // Look for static files to synchronize
+            try (DirectoryStream<Path> sassFilesStream = Files.newDirectoryStream(sourceDir, sassFilter)) {
+                for (Path sassFile : sassFilesStream) {
+                    try {
+                        String result = sassProcessor.process(sassFile);
+                        Path destinationPath = targetDir.resolve(sassFile.getFileName().toString()
+                                .replace(".sass", ".css")
+                                .replace(".scss", ".css"));
+                        Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
+                                WRITE, TRUNCATE_EXISTING);
+                    } catch (CompilationException e) {
+                        LOG.error("Failed to process SASS file '{}'", sassFile, e);
                     }
                 }
             }

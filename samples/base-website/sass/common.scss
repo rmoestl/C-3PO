@@ -1,0 +1,13 @@
+@import '_variables';
+
+html {
+  background-color: $primary-bg-color;
+  color: $primary-text-color;
+  font-family: 'Raleway', sans-serif;
+}
+
+h1 {
+  color: #A8A880;
+  text-align: center;
+  font-size: 1.5em;
+}
