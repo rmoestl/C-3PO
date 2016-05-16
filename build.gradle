@@ -3,7 +3,7 @@ apply plugin: 'groovy'
 apply plugin: 'application'
 
 sourceCompatibility = 1.8
-version = '0.2'
+version = '0.3-SNAPSHOT'
 
 mainClassName = "org.c_3po.Main"
 
