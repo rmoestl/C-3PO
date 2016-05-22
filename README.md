@@ -2,7 +2,7 @@
 
 C-3PO is a Java-based static web site generator.
 
-First and foremost C-3PO is based on the [Thymeleaf](http://www.thymeleaf.org/doc/tutorials/2.1/usingthymeleaf.html)
+First and foremost C-3PO is based on the [Thymeleaf 2.1.3](http://www.thymeleaf.org/doc/tutorials/2.1/usingthymeleaf.html)
 templating system. Thymeleaf is a template engine (like JSP) but also
 involves good layout support (like Tiles).
 
