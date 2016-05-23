@@ -150,7 +150,7 @@ public class SiteGenerator {
                     changedPath = parent.resolve(changedPath);
 
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
-                        if (htmlFilter.accept(changedPath)) {
+                        if (htmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
                             buildPages(sourceDirectoryPath, destinationDirectoryPath);
                         } else if (staticFileFilter.accept(changedPath) || markdownFilter.accept(changedPath)) {
                             Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
@@ -161,6 +161,9 @@ public class SiteGenerator {
                                 LOG.debug("Registered autoBuild watcher for '{}'", changedPath);
                             }
                             buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                        } else {
+                            LOG.warn("No particular action executed for '{}' that triggered a change with kind '{}'",
+                                    event.context(), event.kind());
                         }
                     } else if (kind == ENTRY_DELETE) {
                         if (!isCompleteIgnorable(changedPath) && !isResultIgnorable(changedPath)) {
