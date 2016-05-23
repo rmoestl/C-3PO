@@ -195,7 +195,9 @@ $meta-description: A summary that describes the contents (ideally 150 to 160 cha
 ...
 ```
 
-They must start with `$meta-`. Everything between `$meta-` and the colon `:` will become the name of the meta tag. The rest after the colon `:` will be the content of the meta tag. When processing a markdown file, C-3PO will put this data as an object called `markdownHead` into the template's context. You'll be able to use the `markdownHead` object in the Thymeleaf template file `md-template.html` like this:
+They must start with `$meta-`. Everything between `$meta-` and the colon `:` will become the name of the meta tag. The rest after the colon `:` will be the content of the meta tag.
+
+When processing a markdown file, C-3PO will put this data as an object called `markdownHead` into the template's context. You'll be able to use the `markdownHead` object in the Thymeleaf template file `md-template.html` like this:
 
 ```
 <title th:text="${markdownHead.title}"></title>
@@ -204,6 +206,10 @@ They must start with `$meta-`. Everything between `$meta-` and the colon `:` wil
   th:content="${metaTagEntry.value}">
 ```
 
+#### Access the name of the markdown file
+In some cases you'll want to access the name of the markdown file, that is being processed, in your templates (i.e. layout templates). You might know that Thymeleaf passes the name of the current template being processed to `${execInfo.templateName}`. But if a markdown file is processed, the template in use is by convention `md-template.html`, meaning that `${execInfo.templateName}` basically resolves to `md-template.html`. But for some situations you'll want to know the name of the markdown file that's being wrapped by `md-template.html`. C-3PO provides that in `markdownFileName` that you can access with `${markdownFileName}`.
+
+**Heads up!** Before using it in your templates, you probably want to check if it is even set (e.g. when mixing markdown and html content). Here's an expression that does that: `${markdownFileName} != null`.
 
 ### Using SASS / SCSS
 C-3PO is able to process **SASS / SCSS** stylesheets. SASS / SCSS is a **CSS preprocessor** and enables you to use useful things

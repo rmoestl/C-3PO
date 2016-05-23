@@ -278,6 +278,7 @@ public class SiteGenerator {
                                 Context context = new Context();
                                 context.setVariable("markdownContent", mdResult.getContentResult());
                                 context.setVariable("markdownHead", mdResult.getHeadResult());
+                                context.setVariable("markdownFileName", markdownFile.toString());
                                 String result = templateEngine.process(markdownTemplateName, context);
 
                                 // Write result to file
