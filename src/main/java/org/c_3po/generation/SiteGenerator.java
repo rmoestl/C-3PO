@@ -2,6 +2,7 @@ package org.c_3po.generation;
 
 import io.bit3.jsass.CompilationException;
 import nz.net.ultraq.thymeleaf.LayoutDialect;
+import nz.net.ultraq.thymeleaf.decorators.SortingStrategy;
 import nz.net.ultraq.thymeleaf.decorators.strategies.GroupingStrategy;
 import org.c_3po.cmd.CmdArguments;
 import org.c_3po.generation.crawl.RobotsGenerator;
@@ -14,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import org.thymeleaf.dom.Element;
+import org.thymeleaf.dom.Node;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
@@ -399,7 +402,7 @@ public class SiteGenerator {
         // and one that is able to resolve relative path template names like '_layouts/main-layout'
         templateEngine.addTemplateResolver(newTemplateResolver(sourceDirectoryPath.toAbsolutePath()));
         templateEngine.addTemplateResolver(newTemplateResolver());
-        templateEngine.addDialect(new LayoutDialect(new GroupingStrategy()));
+        templateEngine.addDialect(new LayoutDialect(new EnhancedGroupingStrategy()));
         return templateEngine;
     }
 
@@ -528,5 +531,32 @@ public class SiteGenerator {
                 }
             }
         });
+    }
+
+    /**
+     * Enhancing / fixing Layout Dialect's GroupingStrategy which doesn't know about
+     * icon elements in &lt;head&gt;.
+     *
+     * E.g. I had the problem of using &lt;link&gt; rel="icon"... in the layout
+     * which is not known to GroupingStrategy. This somehow caused the very
+     * important &lt;base&gt; element to be at the bottom of head which resulted in
+     * CSS files etc. to not resolve correctly.
+     */
+    private static class EnhancedGroupingStrategy implements SortingStrategy {
+        private final GroupingStrategy delegate;
+
+        EnhancedGroupingStrategy() {
+            this.delegate = new GroupingStrategy();
+        }
+
+        @Override
+        public int findPositionForContent(List<Node> decoratorNodes, Node contentNode) {
+            if (contentNode instanceof Element
+                    && ((Element) contentNode).getNormalizedName().equals("base")) {
+                return 0;
+            } else {
+                return this.delegate.findPositionForContent(decoratorNodes, contentNode);
+            }
+        }
     }
 }
