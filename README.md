@@ -20,7 +20,7 @@ At the moment only installing from source is supported. Follow these steps
 - ensure a Java SE JDK 8 is installed on your computer
 - ensure Gradle 2.12 is installed on your computer
 - clone C-3PO's repository to your machine
-- in the repository's root directory call `gradle installApp`
+- in the repository's root directory call `gradle installDist`
 - add the directory **_build/install/C-3PO/bin_** to your **PATH**
 
 
@@ -281,7 +281,7 @@ C-3PO builds with [Gradle 2.12](https://docs.gradle.org/2.12/userguide/userguide
 
 - *gradle build* ... builds (compile, test etc.) the project
 - *gradle distZip* ... creates a ZIP-packaged distribution of C-3PO
-- *gradle installApp* ... installs C-3PO into *build/install*
+- *gradle installDist* ... installs C-3PO into *build/install*
 
 **Hint**: you can put the **/bin** directory within the install directory to your operating system's search **PATH**. This way C-3PO will always be available on the command line.
 This is very useful when developing C-3PO and building a website with C-3PO at the same time.
