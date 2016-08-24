@@ -40,5 +40,5 @@ dependencies {
     testCompile group: 'spock-core', name: 'spock-core', version: '1.0', transitive: false
 }
 
-installApp.dependsOn test
+installDist.dependsOn test
 
