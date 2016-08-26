@@ -46,6 +46,8 @@ public class SiteGenerator {
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".html");
     private final DirectoryStream.Filter<Path> markdownFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".md");
+    private final DirectoryStream.Filter<Path> markdownTemplateFilter =
+            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && entry.toFile().getName().equals(CONVENTIONAL_MARKDOWN_TEMPLATE_NAME);
     private final DirectoryStream.Filter<Path> sassFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) &&
                     (entry.toFile().getName().endsWith(".sass") || entry.toFile().getName().endsWith(".scss"));
@@ -155,7 +157,9 @@ public class SiteGenerator {
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
                         if (htmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
                             buildPages(sourceDirectoryPath, destinationDirectoryPath);
-                        } else if (staticFileFilter.accept(changedPath) || markdownFilter.accept(changedPath)) {
+                        } else if (staticFileFilter.accept(changedPath)
+                                || markdownFilter.accept(changedPath)
+                                || markdownTemplateFilter.accept(changedPath)) {
                             Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
                             buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
                         } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
