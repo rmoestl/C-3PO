@@ -20,10 +20,13 @@ import org.thymeleaf.dom.Node;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoField;
 import java.util.*;
 
 import static java.nio.file.StandardOpenOption.*;
@@ -34,7 +37,6 @@ import static java.nio.file.StandardWatchEventKinds.*;
  */
 public class SiteGenerator {
     private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
-    private static final Context DEFAULT_THYMELEAF_CONTEXT = new Context();
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
     private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
     private static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
@@ -253,7 +255,7 @@ public class SiteGenerator {
                     // Generate
                     try {
                         List<String> lines = Collections.singletonList(
-                                templateEngine.process(htmlFile.toString().replace(".html", ""), DEFAULT_THYMELEAF_CONTEXT));
+                                templateEngine.process(htmlFile.toString().replace(".html", ""), getBaseTemplateContext()));
                         // Write to file
                         Path destinationPath = targetDir.resolve(htmlFile.getFileName());
                         try {
@@ -282,7 +284,7 @@ public class SiteGenerator {
                                 MarkdownProcessor.Result mdResult = markdownProcessor.process(markdownFile);
 
                                 // Integrate into Thymeleaf template
-                                Context context = new Context();
+                                Context context = getBaseTemplateContext();
                                 context.setVariable("markdownContent", mdResult.getContentResult());
                                 context.setVariable("markdownHead", mdResult.getHeadResult());
                                 context.setVariable("markdownFileName", markdownFile.toString());
@@ -303,7 +305,7 @@ public class SiteGenerator {
                 }
             }
 
-            // Look for static files to synchronize
+            // Look for SASS files to synchronize
             try (DirectoryStream<Path> sassFilesStream = Files.newDirectoryStream(sourceDir, sassFilter)) {
                 for (Path sassFile : sassFilesStream) {
                     try {
@@ -337,6 +339,12 @@ public class SiteGenerator {
                 }
             }
         }
+    }
+
+    private Context getBaseTemplateContext() {
+        Context context = new Context();
+        context.setVariable("year", LocalDateTime.now().get(ChronoField.YEAR));
+        return context;
     }
 
     /**
