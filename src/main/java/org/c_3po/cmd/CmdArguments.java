@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
@@ -53,7 +54,16 @@ public class CmdArguments {
     }
 
     private boolean isSrcAndDestNotTheSame() throws IOException {
-        boolean dirsAreTheSame = Files.isSameFile(Paths.get(sourceDirectory), Paths.get(destinationDirectory));
+        boolean dirsAreTheSame;
+        final Path srcPath = Paths.get(sourceDirectory);
+        final Path destpath = Paths.get(destinationDirectory);
+
+        if (Files.exists(srcPath) && Files.exists(destpath)) {
+            dirsAreTheSame = Files.isSameFile(srcPath, destpath);
+        } else {
+            dirsAreTheSame = srcPath.equals(destpath);
+        }
+
         if (dirsAreTheSame) {
             LOG.error("'src' and 'dest' locate the same directory, please use different directories");
         }
