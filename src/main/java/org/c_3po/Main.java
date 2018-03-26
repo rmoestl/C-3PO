@@ -18,18 +18,23 @@ public class Main {
         try {
             LOG.info("Hello There! I'm C-3PO! Which site do you wish me to generate?");
 
-            // Parsing Command Line Arguments
+            // Parsing command line arguments
             CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
             LOG.debug("src (source directory) is: {}", cmdArguments.getSourceDirectory());
             LOG.debug("dest (destination directory) is: {}", cmdArguments.getDestinationDirectory());
             LOG.debug("autoBuild is: {}", String.valueOf(cmdArguments.isAutoBuild()));
 
-            // Generate the Site
-            SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
-            if (cmdArguments.isAutoBuild()) {
-                siteGenerator.generateOnFileChange();
-            } else {
-                siteGenerator.generate();
+            // Do cmd arguments validation
+            final boolean cmdArgsValid = cmdArguments.validate();
+
+            // Generate the site
+            if (cmdArgsValid) {
+                SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+                if (cmdArguments.isAutoBuild()) {
+                    siteGenerator.generateOnFileChange();
+                } else {
+                    siteGenerator.generate();
+                }
             }
 
             LOG.debug("I'm going to shutdown.");

@@ -14,8 +14,6 @@ public class ArgumentsParser {
         String destinationDirectoryName = "";
         boolean autoBuild = false;
 
-        // TODO Add checks that source directory exist
-
         for (int i = 0; i < args.length; i++) {
             String argument = args[i];
             LOG.debug("Command line argument: " + argument);

@@ -32,6 +32,8 @@ C-3PO is a command line tool, both for Windows and Unix. C-3PO accepts these com
 - -dest <dir-name> ... the root destination directory in which the website should be generated into
 - -a ... if the flag is set, C-3PO builds the website as soon as files have changed in the source directory tree. This is a useful option when fiddling around with CSS for example.
 
+**Heads up!** C-3PO is preventing you from accidentally using the same `src` and `dest` directories because this would mean that the source files would be overwritten by their generated counterparts.
+
 Here's an example
 
 ```
