@@ -33,8 +33,8 @@ dependencies {
     compile group: 'xerces', name: 'xercesImpl', version: '2.11.0', transitive: false
     compile group: 'xml-apis', name: 'xml-apis', version: '1.4.01', transitive: false
     compile group: 'com.atlassian.commonmark', name: 'commonmark', version: '0.3.0', transitive: false
-    compile group: 'io.bit3', name: 'jsass', version: '5.1.1', transitive: false
-    compile group: 'commons.io', name: 'commons-io', version: '2.5', transitive: false
+    compile group: 'io.bit3', name: 'jsass', version: '5.8.0', transitive: false
+    compile group: 'commons.io', name: 'commons-io', version: '2.6', transitive: false
     testCompile group: 'junit', name: 'junit', version: '4.12', transitive: false
     testCompile group: 'hamcrest', name: 'hamcrest-core', version: '1.3', transitive: false
     testCompile group: 'spock-core', name: 'spock-core', version: '1.0', transitive: false
