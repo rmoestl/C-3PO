@@ -252,7 +252,7 @@ sites where you want to control a main and a sub-navigation and the name of
 the template currently being decorated doesn't reflect the main navigation category
 that is supposed to be shown as active.
 
-### How to avoid obsolete <div> elements resulting from a decorator-based layout (layout dialect)?
+### How to avoid obsolete &lt;div&gt; elements resulting from a decorator-based layout (layout dialect)?
 Usually you do something like this in your `layout.html`
 
 ```
