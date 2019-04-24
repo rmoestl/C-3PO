@@ -50,9 +50,17 @@ public class SiteGenerator {
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".md");
     private final DirectoryStream.Filter<Path> markdownTemplateFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && entry.toFile().getName().equals(CONVENTIONAL_MARKDOWN_TEMPLATE_NAME);
+
     private final DirectoryStream.Filter<Path> sassFilter =
-            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) &&
-                    (entry.toFile().getName().endsWith(".sass") || entry.toFile().getName().endsWith(".scss"));
+            entry -> {
+                boolean isSassFile = entry.toFile().getName().endsWith(".sass")
+                        || entry.toFile().getName().endsWith(".scss");
+                boolean isNotSassPartial = !entry.toFile().getName().startsWith("_");
+                return Files.isRegularFile(entry)
+                        && !isCompleteIgnorable(entry) && !isResultIgnorable(entry)
+                        && isSassFile && isNotSassPartial;
+            };
+
     private final DirectoryStream.Filter<Path> staticFileFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && !htmlFilter.accept(entry)
                     && !markdownFilter.accept(entry) && !sassFilter.accept(entry);
