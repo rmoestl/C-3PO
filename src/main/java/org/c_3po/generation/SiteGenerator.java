@@ -55,10 +55,9 @@ public class SiteGenerator {
             entry -> {
                 boolean isSassFile = entry.toFile().getName().endsWith(".sass")
                         || entry.toFile().getName().endsWith(".scss");
-                boolean isNotSassPartial = !entry.toFile().getName().startsWith("_");
                 return Files.isRegularFile(entry)
                         && !isCompleteIgnorable(entry) && !isResultIgnorable(entry)
-                        && isSassFile && isNotSassPartial;
+                        && isSassFile;
             };
 
     private final DirectoryStream.Filter<Path> staticFileFilter =
@@ -317,12 +316,16 @@ public class SiteGenerator {
             try (DirectoryStream<Path> sassFilesStream = Files.newDirectoryStream(sourceDir, sassFilter)) {
                 for (Path sassFile : sassFilesStream) {
                     try {
-                        String result = sassProcessor.process(sassFile);
-                        Path destinationPath = targetDir.resolve(sassFile.getFileName().toString()
-                                .replace(".sass", ".css")
-                                .replace(".scss", ".css"));
-                        Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
-                                WRITE, TRUNCATE_EXISTING);
+                        boolean isNotSassPartial = !sassFile.toFile().getName().startsWith("_");
+
+                        if (isNotSassPartial) {
+                            String result = sassProcessor.process(sassFile);
+                            Path destinationPath = targetDir.resolve(sassFile.getFileName().toString()
+                                    .replace(".sass", ".css")
+                                    .replace(".scss", ".css"));
+                            Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
+                                    WRITE, TRUNCATE_EXISTING);
+                        }
                     } catch (CompilationException e) {
                         LOG.error("Failed to process SASS file '{}'", sassFile, e);
                     }
