@@ -217,9 +217,11 @@ In some cases you'll want to access the name of the markdown file, that is being
 C-3PO is able to process **SASS / SCSS** stylesheets. SASS / SCSS is a **CSS preprocessor** and enables you to use useful things
 like **selector nesting** or **variables** in your stylesheets. Read more about it at <http://sass-lang.com>.
 
-Beware that there's a difference between `.scss` and `sass` files. E.g. in `.sass` files you can omit curly brackets and the
+Beware that there's a difference between `.scss` and `.sass` files. E.g. in `.sass` files you can omit curly brackets and the
 indentation level of your code is important. However, seemingly the SASS owners introduced SCSS later on because
 SASS was causing some confusion.
+
+Note: C-3PO is minifying CSS output by default.
 
 See the sample project **samples/base-website** for a basic SASS example.
 

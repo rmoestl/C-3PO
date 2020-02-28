@@ -22,6 +22,7 @@ public class SassProcessor {
     public String process(Path sassFile) throws CompilationException {
         Compiler compiler = new Compiler();
         Options options = new Options();
+        options.setOutputStyle(OutputStyle.COMPRESSED);
         FileContext fileContext = new FileContext(sassFile.toUri(), null, options);
         Output output = compiler.compile(fileContext);
         return output.getCss();
