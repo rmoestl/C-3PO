@@ -181,10 +181,13 @@ public class SiteGenerator {
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
                         if (htmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
                             buildPages(sourceDirectoryPath, destinationDirectoryPath);
-                        } else if (staticFileFilter.accept(changedPath)
-                                || markdownFilter.accept(changedPath)
-                                || markdownTemplateFilter.accept(changedPath)) {
+                        } else if (staticFileFilter.accept(changedPath) ||
+                                markdownFilter.accept(changedPath) ||
+                                markdownTemplateFilter.accept(changedPath)) {
                             Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
+
+                            // Changed static assets and markdown articles don't require a full rebuild
+                            // because their contents isn't copied over into another file.
                             buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
                         } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
                             if (kind == ENTRY_CREATE) {
@@ -287,7 +290,6 @@ public class SiteGenerator {
                 } catch (RuntimeException ex) {
                     LOG.warn("Thymeleaf failed to process '{}'. Reason: '{}'", htmlFile, ex.getMessage());
                 }
-
             }
         }
 
