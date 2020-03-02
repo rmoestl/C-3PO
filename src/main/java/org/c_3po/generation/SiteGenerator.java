@@ -121,7 +121,8 @@ public class SiteGenerator {
         buildPages(sourceDirectoryPath, destinationDirectoryPath);
         buildCrawlFiles(sourceDirectoryPath, destinationDirectoryPath);
 
-        // TODO Check if there are any files in destination directory that are to be ignored (e.g. because ignore file has changed since last generation)
+        // TODO Check if there are any files in destination directory that are to be ignored
+        //  (e.g. because ignore file has changed since last generation)
     }
 
     /**
@@ -312,7 +313,7 @@ public class SiteGenerator {
                 }
             }
 
-            // Look for SASS files to synchronize
+            // Look for SASS files to generate
             try (DirectoryStream<Path> sassFilesStream = Files.newDirectoryStream(sourceDir, sassFilter)) {
                 for (Path sassFile : sassFilesStream) {
                     try {
@@ -339,7 +340,7 @@ public class SiteGenerator {
                 }
             }
 
-            // Look for subdirectories that are to be processed by c-3po
+            // Look for subdirectories to be processed
             try (DirectoryStream<Path> subDirStream =
                          Files.newDirectoryStream(sourceDir,
                                  entry -> Files.isDirectory(entry) && !isCompleteIgnorable(entry.normalize())
