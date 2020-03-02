@@ -88,20 +88,34 @@ public class SiteGenerator {
     public static SiteGenerator fromCmdArguments(CmdArguments cmdArguments) {
         Objects.requireNonNull(cmdArguments);
         Path sourceDirectoryPath = Paths.get(cmdArguments.getSourceDirectory());
-        if (Files.exists(sourceDirectoryPath)) {
-            Path settingsFilePath = sourceDirectoryPath.resolve(C_3PO_SETTINGS_FILE_NAME);
-            Properties settings = null;
-            try {
-                settings = readSettings(settingsFilePath);
-            } catch (IOException e) {
-                LOG.warn("Failed to load settings from file '{}'", settingsFilePath);
-            }
 
-            return new SiteGenerator(sourceDirectoryPath,
-                    Paths.get(cmdArguments.getDestinationDirectory()), getCompleteIgnorables(sourceDirectoryPath), Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)), settings);
-        } else {
+        ensureValidSourceDirectory(sourceDirectoryPath);
+
+        // Read in settings
+        Path settingsFilePath = sourceDirectoryPath.resolve(C_3PO_SETTINGS_FILE_NAME);
+        Properties settings = null;
+        try {
+            settings = readSettings(settingsFilePath);
+        } catch (IOException e) {
+            LOG.warn("Failed to load settings from file '{}'", settingsFilePath);
+        }
+
+        // Construct instance
+        return new SiteGenerator(sourceDirectoryPath,
+                Paths.get(cmdArguments.getDestinationDirectory()),
+                getCompleteIgnorables(sourceDirectoryPath),
+                Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)),
+                settings);
+    }
+
+    private static void ensureValidSourceDirectory(Path sourceDirectoryPath) {
+        if (!Files.exists(sourceDirectoryPath)) {
             throw new IllegalArgumentException(
-                    "Source directory '" + cmdArguments.getSourceDirectory() + "' does not exist.");
+                    "Source directory '" + sourceDirectoryPath + "' does not exist.");
+        }
+        if (!Files.isDirectory(sourceDirectoryPath)) {
+            throw new IllegalArgumentException(
+                    "Source directory '" + sourceDirectoryPath + "' is not a directory.");
         }
     }
 
@@ -244,111 +258,109 @@ public class SiteGenerator {
     }
 
     private void buildPages(Path sourceDir, Path targetDir) throws IOException {
-        if (Files.exists(sourceDir) && Files.isDirectory(sourceDir)) {
-            LOG.debug("Building pages contained in '{}'", sourceDir);
+        LOG.debug("Building pages contained in '{}'", sourceDir);
 
-            // Clear Thymeleaf's template cache
-            templateEngine.clearTemplateCache();
+        // Clear Thymeleaf's template cache
+        templateEngine.clearTemplateCache();
 
-            // Ensure targetDir exists
-            if (!Files.exists(targetDir)) {
-                Files.createDirectories(targetDir);
-            }
+        // Ensure targetDir exists
+        if (!Files.exists(targetDir)) {
+            Files.createDirectories(targetDir);
+        }
 
-            // Look for HTML files to generate
-            try (DirectoryStream<Path> htmlFilesStream = Files.newDirectoryStream(sourceDir, htmlFilter)) {
-                for (Path htmlFile : htmlFilesStream) {
-                    LOG.trace("Generate '{}'", htmlFile);
+        // Look for HTML files to generate
+        try (DirectoryStream<Path> htmlFilesStream = Files.newDirectoryStream(sourceDir, htmlFilter)) {
+            for (Path htmlFile : htmlFilesStream) {
+                LOG.trace("Generate '{}'", htmlFile);
 
-                    // Generate
+                // Generate
+                try {
+                    List<String> lines = Collections.singletonList(
+                            templateEngine.process(htmlFile.toString().replace(".html", ""), getBaseTemplateContext()));
+                    // Write to file
+                    Path destinationPath = targetDir.resolve(htmlFile.getFileName());
                     try {
-                        List<String> lines = Collections.singletonList(
-                                templateEngine.process(htmlFile.toString().replace(".html", ""), getBaseTemplateContext()));
-                        // Write to file
-                        Path destinationPath = targetDir.resolve(htmlFile.getFileName());
+                        Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
+                    } catch (IOException e) {
+                        LOG.error("Failed to write generated document to {}", destinationPath, e);
+                    }
+                } catch (RuntimeException ex) {
+                    LOG.warn("Thymeleaf failed to process '{}'. Reason: '{}'", htmlFile, ex.getMessage());
+                }
+
+            }
+        }
+
+        // Look for Markdown files to generate
+        try (DirectoryStream<Path> markdownFilesStream = Files.newDirectoryStream(sourceDir, markdownFilter)) {
+            Iterator<Path> iterator = markdownFilesStream.iterator();
+            if (iterator.hasNext()) {
+                Path markdownTemplatePath = sourceDir.resolve(CONVENTIONAL_MARKDOWN_TEMPLATE_NAME);
+                if (Files.exists(markdownTemplatePath)) {
+                    String markdownTemplateName = markdownTemplatePath.toString().replace(".html", "");
+                    while (iterator.hasNext()) {
+                        final Path markdownFile = iterator.next();
                         try {
-                            Files.write(destinationPath, lines, Charset.forName("UTF-8"), CREATE, WRITE, TRUNCATE_EXISTING);
-                        } catch (IOException e) {
-                            LOG.error("Failed to write generated document to {}", destinationPath, e);
-                        }
-                    } catch (RuntimeException ex) {
-                        LOG.warn("Thymeleaf failed to process '{}'. Reason: '{}'", htmlFile, ex.getMessage());
-                    }
+                            // Process markdown
+                            MarkdownProcessor.Result mdResult = markdownProcessor.process(markdownFile);
 
-                }
-            }
+                            // Integrate into Thymeleaf template
+                            Context context = getBaseTemplateContext();
+                            context.setVariable("markdownContent", mdResult.getContentResult());
+                            context.setVariable("markdownHead", mdResult.getHeadResult());
+                            context.setVariable("markdownFileName", markdownFile.toString());
+                            String result = templateEngine.process(markdownTemplateName, context);
 
-            // Look for Markdown files to generate
-            try (DirectoryStream<Path> markdownFilesStream = Files.newDirectoryStream(sourceDir, markdownFilter)) {
-                Iterator<Path> iterator = markdownFilesStream.iterator();
-                if (iterator.hasNext()) {
-                    Path markdownTemplatePath = sourceDir.resolve(CONVENTIONAL_MARKDOWN_TEMPLATE_NAME);
-                    if (Files.exists(markdownTemplatePath)) {
-                        String markdownTemplateName = markdownTemplatePath.toString().replace(".html", "");
-                        while (iterator.hasNext()) {
-                            final Path markdownFile = iterator.next();
-                            try {
-                                // Process markdown
-                                MarkdownProcessor.Result mdResult = markdownProcessor.process(markdownFile);
-
-                                // Integrate into Thymeleaf template
-                                Context context = getBaseTemplateContext();
-                                context.setVariable("markdownContent", mdResult.getContentResult());
-                                context.setVariable("markdownHead", mdResult.getHeadResult());
-                                context.setVariable("markdownFileName", markdownFile.toString());
-                                String result = templateEngine.process(markdownTemplateName, context);
-
-                                // Write result to file
-                                Path destinationPath = targetDir.resolve(markdownFile.getFileName().toString().replace(".md", ".html"));
-                                Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
-                                        WRITE, TRUNCATE_EXISTING);
-                            } catch (IOException e) {
-                                LOG.error("Failed to generate document from markdown '{}': [{}]", markdownFile, e.getMessage());
-                            }
-                        }
-                    } else {
-                        LOG.warn("Not processing markdown files in '{}' because expected template file '{}' is missing",
-                                sourceDir, markdownTemplatePath + ".html");
-                    }
-                }
-            }
-
-            // Look for SASS files to generate
-            try (DirectoryStream<Path> sassFilesStream = Files.newDirectoryStream(sourceDir, sassFilter)) {
-                for (Path sassFile : sassFilesStream) {
-                    try {
-                        boolean isNotSassPartial = !sassFile.toFile().getName().startsWith("_");
-
-                        if (isNotSassPartial) {
-                            String result = sassProcessor.process(sassFile);
-                            Path destinationPath = targetDir.resolve(sassFile.getFileName().toString()
-                                    .replace(".sass", ".css")
-                                    .replace(".scss", ".css"));
+                            // Write result to file
+                            Path destinationPath = targetDir.resolve(markdownFile.getFileName().toString().replace(".md", ".html"));
                             Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
                                     WRITE, TRUNCATE_EXISTING);
+                        } catch (IOException e) {
+                            LOG.error("Failed to generate document from markdown '{}': [{}]", markdownFile, e.getMessage());
                         }
-                    } catch (CompilationException e) {
-                        LOG.error("Failed to process SASS file '{}'", sassFile, e);
                     }
+                } else {
+                    LOG.warn("Not processing markdown files in '{}' because expected template file '{}' is missing",
+                            sourceDir, markdownTemplatePath + ".html");
                 }
             }
+        }
 
-            // Look for static files to synchronize
-            try (DirectoryStream<Path> staticFilesStream = Files.newDirectoryStream(sourceDir, staticFileFilter)) {
-                for (Path staticFile : staticFilesStream) {
-                    Files.copy(staticFile, targetDir.resolve(staticFile.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+        // Look for SASS files to generate
+        try (DirectoryStream<Path> sassFilesStream = Files.newDirectoryStream(sourceDir, sassFilter)) {
+            for (Path sassFile : sassFilesStream) {
+                try {
+                    boolean isNotSassPartial = !sassFile.toFile().getName().startsWith("_");
+
+                    if (isNotSassPartial) {
+                        String result = sassProcessor.process(sassFile);
+                        Path destinationPath = targetDir.resolve(sassFile.getFileName().toString()
+                                .replace(".sass", ".css")
+                                .replace(".scss", ".css"));
+                        Files.write(destinationPath, Collections.singletonList(result), Charset.forName("UTF-8"), CREATE,
+                                WRITE, TRUNCATE_EXISTING);
+                    }
+                } catch (CompilationException e) {
+                    LOG.error("Failed to process SASS file '{}'", sassFile, e);
                 }
             }
+        }
 
-            // Look for subdirectories to be processed
-            try (DirectoryStream<Path> subDirStream =
-                         Files.newDirectoryStream(sourceDir,
-                                 entry -> Files.isDirectory(entry) && !isCompleteIgnorable(entry.normalize())
-                                         && !isResultIgnorable(entry.normalize()))) {
-                for (Path subDir : subDirStream) {
-                    LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
-                    buildPages(subDir, targetDir.resolve(subDir.getFileName()));
-                }
+        // Look for static files to synchronize
+        try (DirectoryStream<Path> staticFilesStream = Files.newDirectoryStream(sourceDir, staticFileFilter)) {
+            for (Path staticFile : staticFilesStream) {
+                Files.copy(staticFile, targetDir.resolve(staticFile.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+
+        // Look for subdirectories to be processed
+        try (DirectoryStream<Path> subDirStream =
+                     Files.newDirectoryStream(sourceDir,
+                             entry -> Files.isDirectory(entry) && !isCompleteIgnorable(entry.normalize())
+                                     && !isResultIgnorable(entry.normalize()))) {
+            for (Path subDir : subDirStream) {
+                LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
+                buildPages(subDir, targetDir.resolve(subDir.getFileName()));
             }
         }
     }
