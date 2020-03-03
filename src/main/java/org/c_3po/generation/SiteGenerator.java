@@ -11,6 +11,9 @@ import org.c_3po.generation.crawl.SitemapGenerator;
 import org.c_3po.generation.markdown.MarkdownProcessor;
 import org.c_3po.generation.sass.SassProcessor;
 import org.c_3po.util.StringUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.TemplateEngine;
@@ -314,14 +317,29 @@ public class SiteGenerator {
                     Files.copy(cssFile, fingerprintedFile);
                 }
 
-                // Prune any outdated fingerprinted versions of this file
+                // Purge any outdated fingerprinted versions of this file
                 purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
 
                 // Replace references
-                // TODO: Load files into an HTML parser and select elements with CSS that could potentially hold
-                //  references to the fingerprinted stylesheets. Maybe do this in one pass with a collection
-                //  of fingerprinted stylesheets. Upon replacement consider that the HTML file may reference an
-                //  outdated version. So these need to be replaced as well.
+                // TODO: Do this more efficiently
+                //  - Replace all refs in all docs in one pass
+                //  - If site is only built partially, may also replace outdated fingerprinted refs
+                //  - Be sure to normalize and relativize existing refs in documents so that they become comparable
+                try (DirectoryStream<Path> htmlFiles = Files.newDirectoryStream(destinationDirectoryPath, htmlFilter)) {
+                    for (Path htmlFile : htmlFiles) {
+                        Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");
+
+                        Elements elements = doc.select("link[rel='stylesheet']");
+                        for (org.jsoup.nodes.Element element : elements) {
+                            String hrefVal = element.attr("href");
+                            if (Paths.get(hrefVal).equals(destinationDirectoryPath.relativize(cssFile))) {
+                                element.attr("href", destinationDirectoryPath.relativize(fingerprintedFile).toString());
+                            }
+                        }
+
+                        Files.write(htmlFile, doc.outerHtml().getBytes());
+                    }
+                }
             }
         }
     }
