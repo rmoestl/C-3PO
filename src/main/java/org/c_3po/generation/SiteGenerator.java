@@ -20,11 +20,12 @@ import org.thymeleaf.dom.Node;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoField;
 import java.util.*;
@@ -131,12 +132,14 @@ public class SiteGenerator {
      * Does a one time site generation.
      * @throws IOException
      */
-    public void generate() throws IOException {
-        buildPages(sourceDirectoryPath, destinationDirectoryPath);
-        buildCrawlFiles(sourceDirectoryPath, destinationDirectoryPath);
+    public void generate() throws IOException, GenerationException {
+//        buildPages(sourceDirectoryPath, destinationDirectoryPath);
+//        buildCrawlFiles(sourceDirectoryPath, destinationDirectoryPath);
+        buildWebsite();
 
         // TODO Check if there are any files in destination directory that are to be ignored
         //  (e.g. because ignore file has changed since last generation)
+        //  Update 2020-03-02: Not sure if `generate` is the right place to do so.
     }
 
     /**
@@ -144,7 +147,7 @@ public class SiteGenerator {
      * @throws IOException
      */
     public void generateOnFileChange() throws IOException {
-        buildPages(sourceDirectoryPath, destinationDirectoryPath);
+        buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
 
         WatchService watchService = FileSystems.getDefault().newWatchService();
         Map<WatchKey, Path> watchKeyMap = registerWatchServices(sourceDirectoryPath, watchService);
@@ -180,7 +183,7 @@ public class SiteGenerator {
 
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
                         if (htmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
-                            buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                            buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
                         } else if (staticFileFilter.accept(changedPath) ||
                                 markdownFilter.accept(changedPath) ||
                                 markdownTemplateFilter.accept(changedPath)) {
@@ -188,13 +191,13 @@ public class SiteGenerator {
 
                             // Changed static assets and markdown articles don't require a full rebuild
                             // because their contents isn't copied over into another file.
-                            buildPages(parentDir, destinationDirectoryPath.resolve(parentDir));
+                            buildPagesAndAssets(parentDir, destinationDirectoryPath.resolve(parentDir));
                         } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
                             if (kind == ENTRY_CREATE) {
                                 watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
                                 LOG.debug("Registered autoBuild watcher for '{}'", changedPath);
                             }
-                            buildPages(sourceDirectoryPath, destinationDirectoryPath);
+                            buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
                         } else {
                             LOG.warn("No particular action executed for '{}' that triggered a change with kind '{}'",
                                     event.context(), event.kind());
@@ -260,7 +263,126 @@ public class SiteGenerator {
         }
     }
 
-    private void buildPages(Path sourceDir, Path targetDir) throws IOException {
+    private void buildWebsite() throws IOException, GenerationException {
+        buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
+        buildCrawlFiles();
+
+        // TODO: Somehow use purge-css as well if the respective flag is set
+
+        // TODO: If option true
+        fingerprintAssets();
+    }
+
+    private void fingerprintAssets() throws IOException, GenerationException {
+        Path stylesheetDir = destinationDirectoryPath.resolve("css");
+        try {
+            fingerprintStylesheets(stylesheetDir);
+        } catch (NoSuchAlgorithmException e) {
+            throw new GenerationException("Failed to fingerprint assets", e);
+        }
+    }
+
+    // TODO: Recursive
+    // TODO: Tests
+    //  - CSS in root
+    //  - CSS in subdir
+    //  - Already fingerprinted files in the output do not get fingerprinted again
+    //  - Old fingerprinted files in output get deleted if the fingerprint has changed
+    //  - A reference to an old fingerprinted version is replaced by a new one
+    private void fingerprintStylesheets(Path dir) throws IOException, NoSuchAlgorithmException {
+        DirectoryStream.Filter<Path> cssFilter =
+                entry -> {
+                    String fileName = entry.toFile().getName();
+                    return Files.isRegularFile(entry)
+                            && fileName.endsWith(".css")
+                            && !fileName.matches("^.*\\.[0123456789abcdef]{40}\\.css$");
+                };
+
+        try (DirectoryStream<Path> cssFiles = Files.newDirectoryStream(dir, cssFilter)) {
+            for (Path cssFile : cssFiles) {
+                LOG.info(String.format("Fingerprinting stylesheet file '%s'", cssFile));
+
+                // Compute hash
+                String sha1 = computeSha1Hash(cssFile);
+
+                // Create file
+                String fileName = cssFile.getFileName().toString();
+                String fingerprintedFileName = fileName.replaceFirst(".css$", "." + sha1 + ".css");
+
+                Path fingerprintedFile = dir.resolve(fingerprintedFileName);
+                if (!Files.exists(fingerprintedFile)) {
+                    Files.copy(cssFile, fingerprintedFile);
+                }
+
+                // Prune any outdated fingerprinted versions of this file
+                purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
+
+                // Replace references
+                // TODO: Load files into an HTML parser and select elements with CSS that could potentially hold
+                //  references to the fingerprinted stylesheets. Maybe do this in one pass with a collection
+                //  of fingerprinted stylesheets. Upon replacement consider that the HTML file may reference an
+                //  outdated version. So these need to be replaced as well.
+            }
+        }
+    }
+
+    private void purgeOutdatedFingerprintedVersions(Path dir, String fileName, String fingerprintedFileName)
+            throws IOException {
+        String name = fileName.substring(0, fileName.lastIndexOf("."));
+        String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
+
+        DirectoryStream.Filter<Path> outdatedFilter =
+                entry -> {
+                    String entryFileName = entry.toFile().getName();
+                    return Files.isRegularFile(entry)
+                            && !entryFileName.equals(fingerprintedFileName)
+                            && entryFileName.matches(String.format("^%s\\.[0123456789abcdef]{40}\\.%s$", name, ext));
+                };
+
+        try (DirectoryStream<Path> outdatedFiles = Files.newDirectoryStream(dir, outdatedFilter)) {
+            for (Path outdatedFile : outdatedFiles) {
+                Files.delete(outdatedFile);
+            }
+        }
+    }
+
+    private String computeSha1Hash(Path cssFile) throws NoSuchAlgorithmException, IOException {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(cssFile))) {
+            byte[] buffer = new byte[1024];
+
+            while (bis.read(buffer) > -1) {
+                md.update(buffer);
+            }
+
+            return encodeHexString(md.digest());
+        }
+    }
+
+    // TODO: Extract to helper class
+    /**
+     * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
+     */
+    private String encodeHexString(byte[] byteArray) {
+        StringBuilder hexStringBuffer = new StringBuilder();
+        for (byte b : byteArray) {
+            hexStringBuffer.append(byteToHex(b));
+        }
+        return hexStringBuffer.toString();
+    }
+
+    // TODO: Extract to helper class
+    /**
+     * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
+     */
+    private String byteToHex(byte num) {
+        char[] hexDigits = new char[2];
+        hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
+        hexDigits[1] = Character.forDigit((num & 0xF), 16);
+        return new String(hexDigits);
+    }
+
+    private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
         LOG.debug("Building pages contained in '{}'", sourceDir);
 
         // Clear Thymeleaf's template cache
@@ -362,7 +484,7 @@ public class SiteGenerator {
                                      && !isResultIgnorable(entry.normalize()))) {
             for (Path subDir : subDirStream) {
                 LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
-                buildPages(subDir, targetDir.resolve(subDir.getFileName()));
+                buildPagesAndAssets(subDir, targetDir.resolve(subDir.getFileName()));
             }
         }
     }
@@ -374,31 +496,35 @@ public class SiteGenerator {
     }
 
     /**
-     * Builds the crawling-related files based on the given directory.
-     *
-     * @param websiteGeneratedDir the path to the directory in which the entire generated website is located in
+     * Builds the crawling-related files sitemap.xml and robots.txt.
      */
-    private void buildCrawlFiles(Path websiteSourceDir, Path websiteGeneratedDir) {
+    private void buildCrawlFiles() {
         String sitemapFileName = "sitemap.xml";
         String baseUrl = settings.getProperty("baseUrl");
 
-        if (!Files.exists(websiteSourceDir.resolve(sitemapFileName)) && !StringUtils.isBlank(baseUrl)) {
+        boolean noSitemapFileInSourceDir = !Files.exists(sourceDirectoryPath.resolve(sitemapFileName));
+        boolean baseSiteUrlIsSet = !StringUtils.isBlank(baseUrl);
+        if (noSitemapFileInSourceDir && baseSiteUrlIsSet) {
             try {
-                Path sitemapFilePath = websiteGeneratedDir.resolve(sitemapFileName);
-                IgnorablesMatcher sitemapIgnorablesMatcher = IgnorablesMatcher.from(websiteGeneratedDir,
-                        Ignorables.readSitemapIgnorables(websiteSourceDir.resolve(C_3PO_IGNORE_FILE_NAME)));
                 SiteStructure siteStructure = SiteStructure.getInstance(baseUrl);
-                Files.walkFileTree(websiteGeneratedDir, new SimpleFileVisitor<Path>() {
+
+                // Capture site structure
+                IgnorablesMatcher sitemapIgnorablesMatcher = IgnorablesMatcher.from(destinationDirectoryPath,
+                        Ignorables.readSitemapIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)));
+                Files.walkFileTree(destinationDirectoryPath, new SimpleFileVisitor<Path>() {
                     @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        if (file.toString().endsWith(".html") && !sitemapIgnorablesMatcher.matches(file)) {
-                            siteStructure.add(websiteGeneratedDir.relativize(file));
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        boolean isHtmlFile = file.toString().endsWith(".html");
+                        boolean isNotIgnorable = !sitemapIgnorablesMatcher.matches(file);
+                        if (isHtmlFile && isNotIgnorable) {
+                            siteStructure.add(destinationDirectoryPath.relativize(file));
                         }
+
                         return FileVisitResult.CONTINUE;
                     }
 
                     @Override
-                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                         if (sitemapIgnorablesMatcher.matches(dir)) {
                             LOG.debug("Ignoring directory '{}' for sitemap generation", dir.toAbsolutePath());
                             return FileVisitResult.SKIP_SUBTREE;
@@ -406,22 +532,27 @@ public class SiteGenerator {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-                LOG.info("Building a sitemap xml file");
+
+                // Build the sitemap.xml and robots.txt
                 try {
+                    // sitemap.xml
+                    LOG.info("Building a sitemap xml file");
+                    Path sitemapFilePath = destinationDirectoryPath.resolve(sitemapFileName);
                     SitemapGenerator.generate(siteStructure, sitemapFilePath);
 
-                    // Robots.txt file
-                    if (!Files.exists(websiteSourceDir.resolve(RobotsGenerator.ROBOTS_TXT_FILE_NAME))) {
+                    // robots.txt
+                    // TODO: This check should be moved one level up
+                    if (!Files.exists(sourceDirectoryPath.resolve(RobotsGenerator.ROBOTS_TXT_FILE_NAME))) {
                         try {
                             LOG.info("Building a robots.txt file");
-                            RobotsGenerator.generate(websiteGeneratedDir, StringUtils.trimmedJoin("/", baseUrl, sitemapFileName));
+                            RobotsGenerator.generate(destinationDirectoryPath, StringUtils.trimmedJoin("/", baseUrl, sitemapFileName));
                         } catch (GenerationException e) {
                             LOG.warn("Wasn't able to generate a '{}' file. Proceeding.",
                                     RobotsGenerator.ROBOTS_TXT_FILE_NAME,  e);
                         }
                     } else {
                         LOG.info("Found a robots.txt file in '{}'. Tip: ensure that the URL to the sitemap.xml " +
-                                "file is included in robots.txt.", websiteSourceDir);
+                                "file is included in robots.txt.", sourceDirectoryPath);
                     }
                 } catch (GenerationException e) {
                     LOG.warn("Failed to generate sitemap xml file", e);
