@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'application'
 
-sourceCompatibility = 1.8
+sourceCompatibility = JavaVersion.VERSION_11
 version = '0.3-SNAPSHOT'
 
 mainClassName = "org.c_3po.Main"
