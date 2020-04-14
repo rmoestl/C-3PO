@@ -8,6 +8,7 @@ import org.c_3po.cmd.CmdArguments;
 import org.c_3po.generation.crawl.RobotsGenerator;
 import org.c_3po.generation.crawl.SiteStructure;
 import org.c_3po.generation.crawl.SitemapGenerator;
+import org.c_3po.generation.fingerprinting.Fingerprinter;
 import org.c_3po.generation.markdown.MarkdownProcessor;
 import org.c_3po.generation.sass.SassProcessor;
 import org.c_3po.util.StringUtils;
@@ -282,7 +283,7 @@ public class SiteGenerator {
 
         var assetSubstitutes = new HashMap<String, String>();
         try {
-            assetSubstitutes.putAll(fingerprintStylesheets(stylesheetDir));
+            assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
 
             // TODO: Fingerprint media files, JS and so on
         } catch (NoSuchAlgorithmException e) {
@@ -295,66 +296,6 @@ public class SiteGenerator {
         replaceAssetReferences(assetSubstitutes);
     }
 
-    // TODO: Tests
-    //  - CSS in root
-    //  - CSS in subdir
-    //  - Already fingerprinted files in the output do not get fingerprinted again
-    //  - Old fingerprinted files in output get deleted if the fingerprint has changed
-    //  - A reference to an old fingerprinted version is replaced by a new one
-    private Map<String, String> fingerprintStylesheets(Path dir) throws IOException, NoSuchAlgorithmException {
-        var substitutes = new HashMap<String, String>();
-
-        // If no valid directory, return empty map
-        if (!Files.isDirectory(dir)) {
-            return substitutes;
-        }
-
-        DirectoryStream.Filter<Path> cssFilter =
-                entry -> {
-                    String fileName = entry.toFile().getName();
-                    return Files.isRegularFile(entry)
-                            && fileName.endsWith(".css")
-                            && !fileName.matches("^.*\\.[0123456789abcdef]{40}\\.css$");
-                };
-
-        try (DirectoryStream<Path> cssFiles = Files.newDirectoryStream(dir, cssFilter)) {
-            for (Path cssFile : cssFiles) {
-                LOG.info(String.format("Fingerprinting stylesheet file '%s'", cssFile));
-
-                // Compute hash
-                String sha1 = computeSha1Hash(cssFile);
-
-                // Create file
-                String fileName = cssFile.getFileName().toString();
-                String fingerprintedFileName = fileName.replaceFirst(".css$", "." + sha1 + ".css");
-                Path fingerprintedFile = dir.resolve(fingerprintedFileName);
-                if (!Files.exists(fingerprintedFile)) {
-                    Files.copy(cssFile, fingerprintedFile);
-                }
-
-                // Add substitution
-                // TODO: See if that works for subfolders in /css as well
-                Path dirAsUrlPath = destinationDirectoryPath.toAbsolutePath().relativize(dir.toAbsolutePath());
-
-                // Note: Leading slash makes it comparable to "implicit schema and domain absolute URLs"
-                substitutes.put("/" + dirAsUrlPath.resolve(fileName).toString(),
-                        dirAsUrlPath.resolve(fingerprintedFileName).toString());
-
-                // Purge any outdated fingerprinted versions of this file
-                // TODO: Add substitutes from here as well
-                purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
-            }
-        }
-
-        // Recurse into sub directories
-        try (DirectoryStream<Path> subDirs = Files.newDirectoryStream(dir, entry -> Files.isDirectory(entry))) {
-            for (Path subDir : subDirs) {
-                substitutes.putAll(fingerprintStylesheets(subDir));
-            }
-        }
-
-        return substitutes;
-    }
 
     // TODO: This could become a fairly generic method which is not tied to fingerprinting
     private void replaceAssetReferences(Map<String, String> assetSubstitutes) throws IOException {
@@ -494,62 +435,6 @@ public class SiteGenerator {
         } else {
             return !uri.getPath().startsWith("/");
         }
-    }
-
-    private void purgeOutdatedFingerprintedVersions(Path dir, String fileName, String fingerprintedFileName)
-            throws IOException {
-        String name = fileName.substring(0, fileName.lastIndexOf("."));
-        String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
-
-        DirectoryStream.Filter<Path> outdatedFilter =
-                entry -> {
-                    String entryFileName = entry.toFile().getName();
-                    return Files.isRegularFile(entry)
-                            && !entryFileName.equals(fingerprintedFileName)
-                            && entryFileName.matches(String.format("^%s\\.[0123456789abcdef]{40}\\.%s$", name, ext));
-                };
-
-        try (DirectoryStream<Path> outdatedFiles = Files.newDirectoryStream(dir, outdatedFilter)) {
-            for (Path outdatedFile : outdatedFiles) {
-                Files.delete(outdatedFile);
-            }
-        }
-    }
-
-    private String computeSha1Hash(Path cssFile) throws NoSuchAlgorithmException, IOException {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(cssFile))) {
-            byte[] buffer = new byte[1024];
-
-            while (bis.read(buffer) > -1) {
-                md.update(buffer);
-            }
-
-            return encodeHexString(md.digest());
-        }
-    }
-
-    // TODO: Extract to helper class
-    /**
-     * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
-     */
-    private String encodeHexString(byte[] byteArray) {
-        StringBuilder hexStringBuffer = new StringBuilder();
-        for (byte b : byteArray) {
-            hexStringBuffer.append(byteToHex(b));
-        }
-        return hexStringBuffer.toString();
-    }
-
-    // TODO: Extract to helper class
-    /**
-     * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
-     */
-    private String byteToHex(byte num) {
-        char[] hexDigits = new char[2];
-        hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
-        hexDigits[1] = Character.forDigit((num & 0xF), 16);
-        return new String(hexDigits);
     }
 
     private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
