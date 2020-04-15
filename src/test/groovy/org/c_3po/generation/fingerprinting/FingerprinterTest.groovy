@@ -31,6 +31,21 @@ class FingerprinterTest extends Specification {
         Files.exists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
     }
 
+    def "test that fingerprintStylesheets fingerprints CSS files in sub directories of the root stylesheet dir"() {
+        setup:
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
+        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments)
+        def cssDir = destDir.resolve("css")
+        siteGenerator.generate()
+
+        when:
+        Fingerprinter.fingerprintStylesheets(cssDir, destDir)
+
+        then:
+        Files.exists(cssDir.resolve("vendor/normalize.css"))
+        Files.exists(cssDir.resolve("vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
+    }
+
     // TODO: Keep it DRY, see SiteGeneratorTest.
     def cleanup() {
         def file = destDir.toFile()
