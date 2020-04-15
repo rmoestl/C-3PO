@@ -6,48 +6,44 @@ import spock.lang.Shared
 import spock.lang.Specification
 
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 
 /**
  * Unit tests for {@Fingerprinter}.
  */
+// TODO: Rename to FingerprinterSpec
 class FingerprinterTest extends Specification {
-    @Shared Path srcDir = Paths.get("src/test/resources/test-project-src")
-    @Shared Path destDir = Paths.get("src/test/resources/test-project-build")
+    @Shared destDir = Paths.get("src/test/resources/test-project-build")
+    @Shared cssDir = destDir.resolve("css")
 
-    def "test that fingerprintStylesheets fingerprints CSS files"() {
-        setup:
+    def setupSpec() {
+        def srcDir = Paths.get("src/test/resources/test-project-src")
         def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments)
-        def cssDir = destDir.resolve("css")
         siteGenerator.generate()
+    }
 
-        when:
+    def "a generated site with a css file in the root css directory" () {
+        when: "when stylesheets are fingerprinted"
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        then:
+        then: "the fingerprinted version of this CSS file is created alongside it"
         Files.exists(cssDir.resolve("main.css"))
         Files.exists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
     }
 
-    def "test that fingerprintStylesheets fingerprints CSS files in sub directories of the root stylesheet dir"() {
-        setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
-        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments)
-        def cssDir = destDir.resolve("css")
-        siteGenerator.generate()
-
-        when:
+    def "a generated site with a css file in a subdir of the root css directory" () {
+        when: "when stylesheets are fingerprinted"
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        then:
+        then: "the fingerprinted version of this CSS file is created alongside it"
         Files.exists(cssDir.resolve("vendor/normalize.css"))
         Files.exists(cssDir.resolve("vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
     }
 
-    // TODO: Keep it DRY, see SiteGeneratorTest.
-    def cleanup() {
+    def cleanupSpec() {
+
+        // TODO: Keep it DRY, see SiteGeneratorTest.
         def file = destDir.toFile()
         if (file.exists()) {
             def wasDeleted = file.deleteDir();
