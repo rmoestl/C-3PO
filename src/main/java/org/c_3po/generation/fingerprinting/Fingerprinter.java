@@ -18,8 +18,6 @@ public class Fingerprinter {
     private static final Logger LOG = LoggerFactory.getLogger(Fingerprinter.class);
 
     // TODO: Tests
-    //  - CSS in root
-    //  - CSS in subdir
     //  - Already fingerprinted files in the output do not get fingerprinted again
     //  - Old fingerprinted files in output get deleted if the fingerprint has changed
     //  - A reference to an old fingerprinted version is replaced by a new one

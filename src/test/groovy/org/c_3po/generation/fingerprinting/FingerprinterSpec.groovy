@@ -8,11 +8,7 @@ import spock.lang.Specification
 import java.nio.file.Files
 import java.nio.file.Paths
 
-/**
- * Unit tests for {@Fingerprinter}.
- */
-// TODO: Rename to FingerprinterSpec
-class FingerprinterTest extends Specification {
+class FingerprinterSpec extends Specification {
     @Shared destDir = Paths.get("src/test/resources/test-project-build")
     @Shared cssDir = destDir.resolve("css")
 
@@ -23,20 +19,20 @@ class FingerprinterTest extends Specification {
         siteGenerator.generate()
     }
 
-    def "a generated site with a css file in the root css directory" () {
-        when: "when stylesheets are fingerprinted"
+    def "fingerprints generated css file" () {
+        when:
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        then: "the fingerprinted version of this CSS file is created alongside it"
+        then:
         Files.exists(cssDir.resolve("main.css"))
         Files.exists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
     }
 
-    def "a generated site with a css file in a subdir of the root css directory" () {
-        when: "when stylesheets are fingerprinted"
+    def "fingerprints generated css file located in subdir" () {
+        when:
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        then: "the fingerprinted version of this CSS file is created alongside it"
+        then:
         Files.exists(cssDir.resolve("vendor/normalize.css"))
         Files.exists(cssDir.resolve("vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
     }
