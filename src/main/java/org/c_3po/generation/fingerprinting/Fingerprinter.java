@@ -7,10 +7,12 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.c_3po.util.ChecksumCalculator.computeSha1Hash;
+import static org.c_3po.util.ChecksumCalculator.encodeHexString;
 
 public class Fingerprinter {
     private static final Logger LOG = LoggerFactory.getLogger(Fingerprinter.class);
@@ -95,52 +97,5 @@ public class Fingerprinter {
                 Files.delete(outdatedFile);
             }
         }
-    }
-
-    // TODO: Extract to helper and add tests that verify that
-    //  the result is same a running `sha1sum` in the shell.
-    private static byte[] computeSha1Hash(Path file) throws NoSuchAlgorithmException, IOException {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        try (var is = Files.newInputStream(file)) {
-            // TODO: Consider increasing buffer size according to https://stackoverflow.com/a/237495/1029261.
-            byte[] buffer = new byte[1024];
-
-            int numBytesRead = 0;
-            while (numBytesRead != -1) {
-                numBytesRead = is.read(buffer);
-                if (numBytesRead > 0) {
-
-                    // It's crucial to not just pass `buffer` because then `.update`
-                    // would add all of `buffer` even though `.read` might has read less bytes
-                    // than buffer's length.
-                    md.update(buffer, 0, numBytesRead);
-                }
-            }
-
-            return md.digest();
-        }
-    }
-
-    // TODO: Extract to helper class
-    /**
-     * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
-     */
-    private static String encodeHexString(byte[] byteArray) {
-        StringBuilder hexStringBuffer = new StringBuilder();
-        for (byte b : byteArray) {
-            hexStringBuffer.append(byteToHex(b));
-        }
-        return hexStringBuffer.toString();
-    }
-
-    // TODO: Extract to helper class
-    /**
-     * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
-     */
-    private static String byteToHex(byte num) {
-        char[] hexDigits = new char[2];
-        hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
-        hexDigits[1] = Character.forDigit((num & 0xF), 16);
-        return new String(hexDigits);
     }
 }
