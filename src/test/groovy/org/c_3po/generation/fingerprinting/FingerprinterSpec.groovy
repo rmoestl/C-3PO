@@ -8,15 +8,17 @@ import spock.lang.Specification
 import java.nio.file.Files
 import java.nio.file.Paths
 
+import static org.c_3po.generation.SiteGenerationHelpers.ensureDestinationDirIsClean
+import static org.c_3po.generation.SiteGenerationHelpers.generateSite
+
 class FingerprinterSpec extends Specification {
+    @Shared srcDir = Paths.get("src/test/resources/test-project-src")
     @Shared destDir = Paths.get("src/test/resources/test-project-build")
     @Shared cssDir = destDir.resolve("css")
 
     def setupSpec() {
-        def srcDir = Paths.get("src/test/resources/test-project-src")
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
-        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments)
-        siteGenerator.generate()
+        ensureDestinationDirIsClean(destDir)
+        generateSite(srcDir, destDir)
     }
 
     def "fingerprints a css file" () {
@@ -49,17 +51,5 @@ class FingerprinterSpec extends Specification {
         Files.exists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
         Files.notExists(cssDir.resolve(
                 "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
-    }
-
-    def cleanupSpec() {
-
-        // TODO: Keep it DRY, see SiteGeneratorTest.
-        def file = destDir.toFile()
-        if (file.exists()) {
-            def wasDeleted = file.deleteDir();
-            if (!wasDeleted) {
-                throw new RuntimeException("Failed to clean up directory");
-            }
-        }
     }
 }

@@ -85,12 +85,6 @@ class SiteGeneratorTest extends Specification {
 //    }
 
     def cleanup() {
-        def file = destDir.toFile()
-        if (file.exists()) {
-            def wasDeleted = file.deleteDir();
-            if (!wasDeleted) {
-                throw new RuntimeException("Failed to clean up directory");
-            }
-        }
+        SiteGenerationHelpers.ensureDestinationDirIsClean(destDir)
     }
 }
