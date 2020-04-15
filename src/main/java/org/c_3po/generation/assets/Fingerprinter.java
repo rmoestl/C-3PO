@@ -1,4 +1,4 @@
-package org.c_3po.generation.fingerprinting;
+package org.c_3po.generation.assets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

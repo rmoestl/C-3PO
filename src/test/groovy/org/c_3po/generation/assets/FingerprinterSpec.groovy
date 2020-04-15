@@ -1,4 +1,4 @@
-package org.c_3po.generation.fingerprinting
+package org.c_3po.generation.assets
 
 import spock.lang.Shared
 import spock.lang.Specification
@@ -9,7 +9,7 @@ import java.nio.file.StandardOpenOption
 
 import static org.c_3po.generation.SiteGenerationHelpers.ensureDestinationDirIsClean
 import static org.c_3po.generation.SiteGenerationHelpers.generateSite
-import static org.c_3po.generation.fingerprinting.FingerprinterSpecHelper.cleanupFingerprintedFiles
+import static org.c_3po.generation.assets.FingerprinterSpecHelper.cleanupFingerprintedFiles
 
 class FingerprinterSpec extends Specification {
     @Shared srcDir = Paths.get("src/test/resources/test-project-src")

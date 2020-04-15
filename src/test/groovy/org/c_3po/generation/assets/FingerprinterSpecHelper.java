@@ -1,4 +1,4 @@
-package org.c_3po.generation.fingerprinting;
+package org.c_3po.generation.assets;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
