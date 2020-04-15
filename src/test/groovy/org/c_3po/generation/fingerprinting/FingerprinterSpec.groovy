@@ -1,6 +1,5 @@
 package org.c_3po.generation.fingerprinting
 
-
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -10,6 +9,7 @@ import java.nio.file.StandardOpenOption
 
 import static org.c_3po.generation.SiteGenerationHelpers.ensureDestinationDirIsClean
 import static org.c_3po.generation.SiteGenerationHelpers.generateSite
+import static org.c_3po.generation.fingerprinting.FingerprinterSpecHelper.cleanupFingerprintedFiles
 
 class FingerprinterSpec extends Specification {
     @Shared srcDir = Paths.get("src/test/resources/test-project-src")
@@ -19,6 +19,10 @@ class FingerprinterSpec extends Specification {
     def setupSpec() {
         ensureDestinationDirIsClean(destDir)
         generateSite(srcDir, destDir)
+    }
+
+    def setup() {
+        cleanupFingerprintedFiles(cssDir)
     }
 
     def "fingerprints a css file" () {
@@ -65,6 +69,4 @@ class FingerprinterSpec extends Specification {
         Files.exists(cssDir.resolve("main.3068d19b5816a4c201a3d72ca4e5e7433537b947.css"))
         Files.notExists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
     }
-
-    // TODO: Revert all fingerprinted files after each feature in a cleanup method
 }
