@@ -12,6 +12,7 @@ import org.c_3po.generation.crawl.SiteStructure;
 import org.c_3po.generation.crawl.SitemapGenerator;
 import org.c_3po.generation.markdown.MarkdownProcessor;
 import org.c_3po.generation.sass.SassProcessor;
+import org.c_3po.io.FileFilters;
 import org.c_3po.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +50,10 @@ public class SiteGenerator {
     private final boolean shouldFingerprintAssets;
     private final Properties settings;
 
-    // TODO: Rename to distinguish it from `FileFilter.htmlFilter`. Consider use it in this filter, though.
-    private final DirectoryStream.Filter<Path> htmlFilter =
-            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".html");
+    private final DirectoryStream.Filter<Path> sourceHtmlFilter =
+            entry -> !isCompleteIgnorable(entry)
+                    && !isResultIgnorable(entry)
+                    && FileFilters.htmlFilter.accept(entry);
     private final DirectoryStream.Filter<Path> markdownFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".md");
     private final DirectoryStream.Filter<Path> markdownTemplateFilter =
@@ -67,7 +69,7 @@ public class SiteGenerator {
             };
 
     private final DirectoryStream.Filter<Path> staticFileFilter =
-            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && !htmlFilter.accept(entry)
+            entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && !sourceHtmlFilter.accept(entry)
                     && !markdownFilter.accept(entry) && !sassFilter.accept(entry);
     private final TemplateEngine templateEngine;
     private final MarkdownProcessor markdownProcessor;
@@ -187,7 +189,7 @@ public class SiteGenerator {
                     changedPath = parent.resolve(changedPath);
 
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
-                        if (htmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
+                        if (sourceHtmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
                             buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
                         } else if (staticFileFilter.accept(changedPath) ||
                                 markdownFilter.accept(changedPath) ||
@@ -291,7 +293,7 @@ public class SiteGenerator {
         }
 
         // Look for HTML files to generate
-        try (DirectoryStream<Path> htmlFilesStream = Files.newDirectoryStream(sourceDir, htmlFilter)) {
+        try (DirectoryStream<Path> htmlFilesStream = Files.newDirectoryStream(sourceDir, sourceHtmlFilter)) {
             for (Path htmlFile : htmlFilesStream) {
                 LOG.trace("Generate '{}'", htmlFile);
 
