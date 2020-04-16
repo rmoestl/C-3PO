@@ -5,15 +5,14 @@ import nz.net.ultraq.thymeleaf.LayoutDialect;
 import nz.net.ultraq.thymeleaf.decorators.SortingStrategy;
 import nz.net.ultraq.thymeleaf.decorators.strategies.GroupingStrategy;
 import org.c_3po.cmd.CmdArguments;
+import org.c_3po.generation.assets.AssetReferences;
+import org.c_3po.generation.assets.Fingerprinter;
 import org.c_3po.generation.crawl.RobotsGenerator;
 import org.c_3po.generation.crawl.SiteStructure;
 import org.c_3po.generation.crawl.SitemapGenerator;
-import org.c_3po.generation.assets.Fingerprinter;
 import org.c_3po.generation.markdown.MarkdownProcessor;
 import org.c_3po.generation.sass.SassProcessor;
 import org.c_3po.util.StringUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.TemplateEngine;
@@ -23,9 +22,8 @@ import org.thymeleaf.dom.Node;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -49,6 +47,8 @@ public class SiteGenerator {
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
     private final Properties settings;
+
+    // TODO: Rename to distinguish it from `FileFilter.htmlFilter`. Consider use it in this filter, though.
     private final DirectoryStream.Filter<Path> htmlFilter =
             entry -> Files.isRegularFile(entry) && !isCompleteIgnorable(entry) && !isResultIgnorable(entry) && entry.toFile().getName().endsWith(".html");
     private final DirectoryStream.Filter<Path> markdownFilter =
@@ -292,148 +292,7 @@ public class SiteGenerator {
 
         // Replace references
         LOG.info(assetSubstitutes.toString());
-        replaceAssetReferences(assetSubstitutes);
-    }
-
-
-    // TODO: This could become a fairly generic method which is not tied to fingerprinting
-    private void replaceAssetReferences(Map<String, String> assetSubstitutes) throws IOException {
-        // Replace references
-        // TODO: Do this more efficiently
-        //  - Replace all refs in all docs in one pass
-        //  - If site is only built partially, may also replace outdated fingerprinted refs
-        try (var htmlFiles = Files.newDirectoryStream(destinationDirectoryPath, htmlFilter)) {
-            for (Path htmlFile : htmlFiles) {
-                Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");
-
-                replaceStylesheetReferences(doc, assetSubstitutes, htmlFile);
-
-                Files.write(htmlFile, doc.outerHtml().getBytes());
-            }
-        }
-
-        // TODO: Recurse (into subdirs?!)
-    }
-
-    private void replaceStylesheetReferences(Document doc, Map<String, String> stylesheetSubstitutes, Path docPath) {
-        // TODO: Check if there any other way to reference a stylesheet?
-        var elements = doc.select("link[rel='stylesheet']");
-        for (org.jsoup.nodes.Element element : elements) {
-            String href = element.attr("href");
-            try {
-                URI hrefURI = new URI(href);
-
-                if (isAssetControlledByWebsite(hrefURI, new URI(settings.getProperty("baseUrl")))) {
-                    String assetPath = translateToAssetPath(hrefURI, determineBaseURI(doc));
-
-                    String substitutePath = stylesheetSubstitutes.get(assetPath);
-                    if (substitutePath != null) {
-
-                        // Note: Replace the asset's name only and leave the URL untouched otherwise.
-                        String assetFileName = Paths.get(assetPath).getFileName().toString();
-                        String substituteFileName = Paths.get(substitutePath).getFileName().toString();
-
-                        // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
-                        //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                        element.attr("href", href.replace(assetFileName, substituteFileName));
-                    } else {
-                        LOG.warn(String.format("Failed to substitute asset resource '%s' found in %s", href, docPath));
-                    }
-                }
-            } catch (URISyntaxException ignored) {
-            }
-        }
-    }
-
-    // TODO: Require the document's URI. What? Maybe the <base> tag is meant.
-    private URI determineBaseURI(Document doc) throws URISyntaxException {
-        return new URI(settings.getProperty("baseUrl"));
-    }
-
-    /**
-     * Determines if the given URI is controlled by the website being built.
-     *
-     * If the website's baseURL contains either a www or non-www host, www
-     * and non-www assets are considered to be served by this origin.
-     * If the baseURL does not contain a www or non-www host, thus contains
-     * a sub-domain different than "www", the given URI is only considered
-     * to be an internal asset if it's URI matches the same host.
-     */
-    private boolean isAssetControlledByWebsite(URI hrefURI, URI baseURI) {
-        // TODO: Finish implementation.
-        boolean isURIIncludingHost = hrefURI.getHost() != null;
-        if (isURIIncludingHost) {
-            return hrefURI.getHost().equals(baseURI.getHost());
-        } else {
-            return true;
-        }
-    }
-
-    private String translateToAssetPath(final URI hrefURI, final URI baseURI) {
-        /*
-            The difficulty is to look at an URL and identify which
-            asset is referenced by it.
-
-            Types of URLs:
-
-            https://example.com/index.html ==> Absolute URL
-            //example.com/index.html ==> Implicit schema absolute URL, or better known as protocol-relative URI
-            /css/main.css ==> Implicit schema and host absolute URL
-            css/main.css ==> Document-relative URL
-
-            Specs
-            - Absolute URLs and implicit schema absolute URLs that reference the host either with or without www
-            subdomain are considered to be resources held by the website that is being built.
-            - Absolute URLs and implicit schema absolute URLs whose root domain is the same but have a different
-            subdomain, e.g. blog.example.com are considered to not be held by this website. They are treated as foreign
-            domains.
-            - Any other absolute URLs are considered to be resources from third parties and thus are not replaced.
-
-            - An absolute URL with implicit schema and host is the easiest. It should only be normalized and then be
-            compared if any asset path is matching.
-
-            - A relative URL is relative to the document it is referenced by. So, I'll need to construct the URI
-            of the document and then `resolve()` the relative URLs. Then query the path portion via `getPath()`
-            to obtain the asset path.
-            - For a relative URL, always see if there are `<base>` elements in the parent document. Before calling
-            resolve, be sure to resolve (?!) the base elements' `href` value. If there are multiple base elements,
-            use the first one that has an href attribute.
-            See https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url.
-        */
-
-        if (isDocumentRelativeURI(hrefURI)) {
-            // TODO: Take <base> into account
-            // TODO: Add leading slash might be brittle but fact is that .getPath() after .resolve()
-            //  does not render a leading slash if relative URI is of form `foo/bar.css` and baseURI
-            //  does not have a path portion. It might be even more complicated like that.
-            String uriPath = baseURI.resolve(hrefURI).getPath();
-            return uriPath.startsWith("/") ? uriPath : "/" + uriPath;
-        } else if (isProtocolRelativeURI(hrefURI)) {
-            return hrefURI.getPath();
-        } else if (isHostRelativeURI(hrefURI)) {
-            return hrefURI.toString();
-        } else if (hrefURI.isAbsolute()) {
-            return hrefURI.getPath();
-        } else {
-            // TODO: Decide if this should be a warning. I think so.
-            return hrefURI.toString();
-        }
-    }
-
-    private boolean isHostRelativeURI(URI uri) {
-        return uri.getHost() == null && uri.toString().startsWith("/");
-    }
-
-    private boolean isProtocolRelativeURI(URI uri) {
-        return uri.getScheme() == null && uri.getHost() != null && uri.toString().startsWith("//");
-    }
-
-    private boolean isDocumentRelativeURI(URI uri) {
-        if (uri.getHost() != null) {
-            return false;
-        } else {
-            return !uri.getPath().startsWith("/");
-        }
+        AssetReferences.replaceAssetsReferences(destinationDirectoryPath, assetSubstitutes, settings);
     }
 
     private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
