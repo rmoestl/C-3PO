@@ -11,13 +11,13 @@ import java.nio.file.Paths
 /**
  * Integration tests for site generation.
  */
-class SiteGeneratorTest extends Specification {
+class SiteGeneratorSpec extends Specification {
     @Shared Path srcDir = Paths.get("src/test/resources/test-project-src")
     @Shared Path destDir = Paths.get("src/test/resources/test-project-build")
 
     def "test that a not existing source directory isn't accepted"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.resolve("/foo").toString(), destDir.toString(), false)
+        def cmdArguments = new CmdArguments(srcDir.resolve("/foo").toString(), destDir.toString(), false, false)
 
         when:
         SiteGenerator.fromCmdArguments(cmdArguments);
@@ -28,7 +28,7 @@ class SiteGeneratorTest extends Specification {
 
     def "test that a file as a source directory isn't accepted"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.resolve("blog.html").toString(), destDir.toString(), false)
+        def cmdArguments = new CmdArguments(srcDir.resolve("blog.html").toString(), destDir.toString(), false, false)
 
         when:
         SiteGenerator.fromCmdArguments(cmdArguments);
@@ -39,7 +39,7 @@ class SiteGeneratorTest extends Specification {
 
     def "test that result-ignorables are not put into the destination directory / output"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
         when:
@@ -51,7 +51,7 @@ class SiteGeneratorTest extends Specification {
 
     def "test that standard C-3PO files are not put into the destination directory / output"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
         when:
