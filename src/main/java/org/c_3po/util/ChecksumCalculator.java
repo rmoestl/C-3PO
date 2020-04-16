@@ -29,7 +29,6 @@ public class ChecksumCalculator {
         }
     }
 
-    // TODO: Extract to helper class
     /**
      * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
      */
@@ -41,7 +40,6 @@ public class ChecksumCalculator {
         return hexStringBuffer.toString();
     }
 
-    // TODO: Extract to helper class
     /**
      * Source: https://www.baeldung.com/java-byte-arrays-hex-strings
      */
