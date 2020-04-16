@@ -14,6 +14,12 @@ class ReplaceAssetsReferencesSpec extends Specification {
     @Shared srcDir = Paths.get("src/test/resources/test-project-src")
     @Shared destDir = Paths.get("src/test/resources/test-project-build")
 
+    def assetSubstitutes = [
+            '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css',
+            '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css'
+    ]
+    def generatorSettings = new Properties()
+
     def setupSpec() {
         ensureDestinationDirIsClean(destDir)
 
@@ -24,18 +30,14 @@ class ReplaceAssetsReferencesSpec extends Specification {
         generateSite(srcDir, destDir)
     }
 
-    def "replaces stylesheet references" () {
-        given:
-        def assetSubstitutes = [
-                '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css',
-                '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css'
-        ]
+    def setup() {
 
         // TODO: If ever reading out settings is more than that, e.g. coercing default values,
         //  be sure to use the corresponding function that is called in generation code as well.
-        def generatorSettings = new Properties()
         generatorSettings.load(Files.newInputStream(srcDir.resolve(".c3posettings")))
+    }
 
+    def "replaces stylesheet references" () {
         when:
         AssetReferences.replaceAssetsReferences(destDir, assetSubstitutes, generatorSettings)
 
@@ -44,8 +46,16 @@ class ReplaceAssetsReferencesSpec extends Specification {
         assertRefsReplacedIn("about.html")
     }
 
-    void assertRefsReplacedIn(htmlFileName) {
-        def doc = Jsoup.parse(destDir.resolve(htmlFileName).toFile(), "UTF-8")
+    def "replaces asset references in HTML files located in sub directories" () {
+        when:
+        AssetReferences.replaceAssetsReferences(destDir, assetSubstitutes, generatorSettings)
+
+        then:
+        assertRefsReplacedIn("blog/first-blog-post.html")
+    }
+
+    void assertRefsReplacedIn(htmlFilePath) {
+        def doc = Jsoup.parse(destDir.resolve(htmlFilePath).toFile(), "UTF-8")
         def elements = doc.select("link[rel='stylesheet']")
 
         // Note: Assertions are strongly coupled to the order the stylesheets are referenced

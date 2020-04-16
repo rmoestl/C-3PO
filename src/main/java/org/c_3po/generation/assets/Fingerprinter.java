@@ -1,5 +1,6 @@
 package org.c_3po.generation.assets;
 
+import org.c_3po.io.FileFilters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +67,7 @@ public class Fingerprinter {
         }
 
         // Recurse into sub directories
-        try (DirectoryStream<Path> subDirs = Files.newDirectoryStream(dir, entry -> Files.isDirectory(entry))) {
+        try (DirectoryStream<Path> subDirs = FileFilters.subDirStream(dir)) {
             for (Path subDir : subDirs) {
                 substitutes.putAll(fingerprintStylesheets(subDir, rootDestDir));
             }

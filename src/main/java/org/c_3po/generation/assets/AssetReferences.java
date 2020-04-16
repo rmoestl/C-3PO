@@ -37,7 +37,12 @@ public class AssetReferences {
             }
         }
 
-        // TODO: Recurse (into subdirs?!)
+        // Replace refs in sub directories
+        try (var subDirs = FileFilters.subDirStream(dir)) {
+            for (var subDir : subDirs) {
+                replaceAssetsReferences(subDir, assetSubstitutes, generatorSettings);
+            }
+        }
     }
 
     private static void replaceStylesheetReferences(Document doc, Map<String, String> stylesheetSubstitutes,
