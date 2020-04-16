@@ -12,6 +12,13 @@ import java.nio.file.StandardCopyOption;
  * output folder.
  */
 public class DirectorySynchronizer {
+    public static void syncDirs(Path sourceDirectory, Path targetDirectory) throws IOException {
+        new DirectorySynchronizer().sync(sourceDirectory, targetDirectory);
+    }
+
+    // TODO: Get rid of instance method and migrate everything ot static method.
+    //  Maybe even consider calling the class `Directories` in case it consists of static
+    //  methods only.
     public void sync(Path sourceDirectory, Path targetDirectory) throws IOException {
         if (Files.exists(sourceDirectory)) {
             validateDirectory(sourceDirectory);
