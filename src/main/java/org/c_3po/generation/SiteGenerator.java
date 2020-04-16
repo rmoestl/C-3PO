@@ -140,8 +140,6 @@ public class SiteGenerator {
      * @throws IOException
      */
     public void generate() throws IOException, GenerationException {
-//        buildPages(sourceDirectoryPath, destinationDirectoryPath);
-//        buildCrawlFiles(sourceDirectoryPath, destinationDirectoryPath);
         buildWebsite();
 
         // TODO Check if there are any files in destination directory that are to be ignored
@@ -279,24 +277,6 @@ public class SiteGenerator {
         if (this.shouldFingerprintAssets) {
             fingerprintAssets();
         }
-    }
-
-    private void fingerprintAssets() throws IOException {
-        Path stylesheetDir = destinationDirectoryPath.resolve("css");
-
-        var assetSubstitutes = new HashMap<String, String>();
-        try {
-            assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
-
-            // TODO: Fingerprint media files, JS and so on
-        } catch (NoSuchAlgorithmException e) {
-            LOG.warn("Failed to fingerprint assets. Beware that your cache busting may not work.");
-        }
-
-
-        // Replace references
-        LOG.info(assetSubstitutes.toString());
-        AssetReferences.replaceAssetsReferences(destinationDirectoryPath, assetSubstitutes, settings);
     }
 
     private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
@@ -478,6 +458,24 @@ public class SiteGenerator {
                 LOG.warn("Failed to generate sitemap file.", e);
             }
         }
+    }
+
+    private void fingerprintAssets() throws IOException {
+        Path stylesheetDir = destinationDirectoryPath.resolve("css");
+
+        var assetSubstitutes = new HashMap<String, String>();
+        try {
+            assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
+
+            // TODO: Fingerprint media files, JS and so on
+        } catch (NoSuchAlgorithmException e) {
+            LOG.warn("Failed to fingerprint assets. Beware that your cache busting may not work.");
+        }
+
+
+        // Replace references
+        LOG.info(assetSubstitutes.toString());
+        AssetReferences.replaceAssetsReferences(destinationDirectoryPath, assetSubstitutes, settings);
     }
 
     private TemplateEngine setupTemplateEngine(Path sourceDirectoryPath) {
