@@ -6,20 +6,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-/**
- * Responsible for synchronizing the contents of directories. E.g. useful
- * for keeping static resources directories such as "img/" in sync with the
- * output folder.
- */
-public class DirectorySynchronizer {
-    public static void syncDirs(Path sourceDirectory, Path targetDirectory) throws IOException {
-        new DirectorySynchronizer().sync(sourceDirectory, targetDirectory);
-    }
+public class Directories {
 
-    // TODO: Get rid of instance method and migrate everything ot static method.
-    //  Maybe even consider calling the class `Directories` in case it consists of static
-    //  methods only.
-    public void sync(Path sourceDirectory, Path targetDirectory) throws IOException {
+    /**
+     * Copies a directory recursively.
+     */
+    public static void copyDir(Path sourceDirectory, Path targetDirectory) throws IOException {
         if (Files.exists(sourceDirectory)) {
             validateDirectory(sourceDirectory);
             validateDirectory(targetDirectory);
@@ -31,7 +23,7 @@ public class DirectorySynchronizer {
             try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(sourceDirectory)) {
                 for (Path entry : directoryStream) {
                     if (Files.isDirectory(entry)) {
-                        sync(entry, targetDirectory.resolve(entry.getFileName()));
+                        copyDir(entry, targetDirectory.resolve(entry.getFileName()));
                     } else {
                         Files.copy(entry, targetDirectory.resolve(entry.getFileName()),
                                 StandardCopyOption.REPLACE_EXISTING);
@@ -41,7 +33,7 @@ public class DirectorySynchronizer {
         }
     }
 
-    private void validateDirectory(Path directory) throws IllegalArgumentException {
+    private static void validateDirectory(Path directory) throws IllegalArgumentException {
         if (Files.exists(directory) && !Files.isDirectory(directory)) {
             throw new IllegalArgumentException(directory.toAbsolutePath() + " is not a directory");
         }

@@ -1,6 +1,6 @@
 package org.c_3po.generation.assets
 
-import org.c_3po.io.DirectorySynchronizer
+import org.c_3po.io.Directories
 import org.jsoup.Jsoup
 import spock.lang.Shared
 import spock.lang.Specification
@@ -28,12 +28,12 @@ class ReplaceAssetsReferencesSpec extends Specification {
     }
 
     def setup() {
+        // Clone dir so that each feature works on a clean slate
+        Directories.copyDir(destDir, destDirClone)
 
         // TODO: If ever reading out settings is ever more than that, e.g. coercing default values,
         //  be sure to use the corresponding function that is called in application code as well.
         generatorSettings.load(Files.newInputStream(srcDir.resolve(".c3posettings")))
-
-        cloneDestDir()
     }
 
     def "replaces stylesheet references" () {
@@ -65,9 +65,5 @@ class ReplaceAssetsReferencesSpec extends Specification {
         // in the test project. Thus, obviously Jsoup returns elements in document order.
         assert elements.get(0).attr("href") == '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css'
         assert elements.get(1).attr("href") == '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css'
-    }
-
-    def cloneDestDir() {
-        DirectorySynchronizer.syncDirs(destDir, destDirClone)
     }
 }
