@@ -62,6 +62,34 @@ class SiteGeneratorSpec extends Specification {
         Files.notExists(destDir.resolve(".c3posettings"))
     }
 
+    def "is able to fingerprint assets, e.g. to make cache busting possible" () {
+        setup:
+        def shouldFingerprintAssets = true
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets)
+        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+
+        when:
+        siteGenerator.generate()
+
+        then:
+        Files.exists(destDir.resolve("css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
+        Files.exists(destDir.resolve("css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
+    }
+
+    def "allows to omit fingerprinting assets" () {
+        setup:
+        def shouldFingerprintAssets = false
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets)
+        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+
+        when:
+        siteGenerator.generate()
+
+        then:
+        Files.notExists(destDir.resolve("css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
+        Files.notExists(destDir.resolve("css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
+    }
+
     // TODO: test that result-ignorable triggers a build when being modified in autoBuild mode
     // TODO: test that newly added result-ignorable is cleaned up in destination directory
 

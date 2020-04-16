@@ -17,11 +17,14 @@ public class CmdArguments {
     private final String sourceDirectory;
     private final String destinationDirectory;
     private final boolean autoBuild;
+    private final boolean fingerprintAssets;
 
-    public CmdArguments(String sourceDirectory, String destinationDirectory, boolean autoBuild) {
+    public CmdArguments(String sourceDirectory, String destinationDirectory, boolean autoBuild,
+                        boolean fingerprintAssets) {
         this.sourceDirectory = sourceDirectory;
         this.destinationDirectory = destinationDirectory;
         this.autoBuild = autoBuild;
+        this.fingerprintAssets = fingerprintAssets;
     }
 
     public String getSourceDirectory() {
@@ -34,6 +37,10 @@ public class CmdArguments {
 
     public boolean isAutoBuild() {
         return autoBuild;
+    }
+
+    public boolean shouldFingerprintAssets() {
+        return fingerprintAssets;
     }
 
     public boolean validate() throws IOException {
@@ -49,6 +56,7 @@ public class CmdArguments {
         return "CmdArguments{" +
                 "sourceDirectory='" + sourceDirectory + '\'' +
                 ", destinationDirectory='" + destinationDirectory + '\'' +
+                ", fingerprintAssets='" + fingerprintAssets + '\'' +
                 ", autoBuild=" + autoBuild +
                 '}';
     }

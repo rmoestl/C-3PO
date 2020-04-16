@@ -46,6 +46,7 @@ public class SiteGenerator {
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
+    private final boolean shouldFingerprintAssets;
     private final Properties settings;
 
     // TODO: Rename to distinguish it from `FileFilter.htmlFilter`. Consider use it in this filter, though.
@@ -75,10 +76,12 @@ public class SiteGenerator {
     private IgnorablesMatcher completeIgnorablesMatcher;
     private IgnorablesMatcher resultIgnorablesMatcher;
 
-    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, List<String> completeIgnorables,
-                          List<String> resultIgnorables, Properties settings) {
+    private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, boolean fingerprintAssets,
+                          List<String> completeIgnorables, List<String> resultIgnorables,
+                          Properties settings) {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
+        this.shouldFingerprintAssets = fingerprintAssets;
         this.settings = settings;
         this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.markdownProcessor = MarkdownProcessor.getInstance();
@@ -108,9 +111,9 @@ public class SiteGenerator {
         // Construct instance
         return new SiteGenerator(sourceDirectoryPath,
                 Paths.get(cmdArguments.getDestinationDirectory()),
+                cmdArguments.shouldFingerprintAssets(),
                 getCompleteIgnorables(sourceDirectoryPath),
-                Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)),
-                settings);
+                Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)), settings);
     }
 
     private static void ensureValidSourceDirectory(Path sourceDirectoryPath) {
@@ -273,8 +276,9 @@ public class SiteGenerator {
 
         // TODO: Somehow use purge-css as well if the respective flag is set
 
-        // TODO: If option true
-        fingerprintAssets();
+        if (this.shouldFingerprintAssets) {
+            fingerprintAssets();
+        }
     }
 
     private void fingerprintAssets() throws IOException {

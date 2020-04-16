@@ -35,6 +35,8 @@ public class ArgumentsParser {
             }
         }
 
-        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild);
+        // TODO: Introduce cmd switch for fingerprinting.
+        // TODO: Properly document switch for users.
+        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild, true);
     }
 }

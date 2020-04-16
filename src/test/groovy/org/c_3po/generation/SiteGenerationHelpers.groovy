@@ -3,8 +3,8 @@ package org.c_3po.generation
 import org.c_3po.cmd.CmdArguments
 
 class SiteGenerationHelpers {
-    def static generateSite(srcDir, destDir) {
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false)
+    def static generateSite(srcDir, destDir, fingerprintAssets = true) {
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, fingerprintAssets)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments)
         siteGenerator.generate()
     }
