@@ -56,7 +56,7 @@ public class Fingerprinter {
 
                 // Note: Leading slash makes it comparable to "implicit schema and domain absolute URLs"
                 substitutes.put("/" + dirAsUrlPath.resolve(fileName).toString(),
-                        dirAsUrlPath.resolve(fingerprintedFileName).toString());
+                        "/" + dirAsUrlPath.resolve(fingerprintedFileName).toString());
 
                 // Purge any outdated fingerprinted versions of this file
                 purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
