@@ -58,15 +58,25 @@ class FingerprinterSpec extends Specification {
     }
 
     def "deletes fingerprinted files if their fingerprint is outdated" () {
+        def newFilename = "main.3068d19b5816a4c201a3d72ca4e5e7433537b947.css"
+        def oldFilename = "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+
         given: "an already fingerprinted css file"
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        when: "its content is being changed and fingerprinted again"
+        when: "its content is being changed"
         Files.write(destDir.resolve("css/main.css"), ".button { color: blue; }".getBytes(), StandardOpenOption.APPEND)
-        Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        then: "the old fingerprinted version gets replaced by the new fingerprinted one"
-        Files.exists(cssDir.resolve("main.3068d19b5816a4c201a3d72ca4e5e7433537b947.css"))
-        Files.notExists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
+        and: "fingerprinted again"
+        def substitutes = Fingerprinter.fingerprintStylesheets(cssDir, destDir)
+
+        then: "the new fingerprinted version gets created"
+        Files.exists(cssDir.resolve(newFilename))
+
+        and: "the old fingerprinted version gets deleted"
+        Files.notExists(cssDir.resolve(oldFilename))
+
+        and: "the returned substitutes contain a pair for replacing the old fingerprinted version with the new one"
+        substitutes.get(oldFilename) == newFilename
     }
 }

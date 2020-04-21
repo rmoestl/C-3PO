@@ -18,8 +18,6 @@ import static org.c_3po.util.ChecksumCalculator.encodeHexString;
 public class Fingerprinter {
     private static final Logger LOG = LoggerFactory.getLogger(Fingerprinter.class);
 
-    // TODO: Tests
-    //  - A reference to an old fingerprinted version is replaced by a new one
     public static Map<String, String> fingerprintStylesheets(Path dir, Path rootDestDir)
             throws IOException, NoSuchAlgorithmException {
         var substitutes = new HashMap<String, String>();
@@ -61,8 +59,8 @@ public class Fingerprinter {
                         dirAsUrlPath.resolve(fingerprintedFileName).toString());
 
                 // Purge any outdated fingerprinted versions of this file
-                // TODO: Add substitutes from here as well
-                purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
+                var substitutesForOutdated = purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
+                substitutes.putAll(substitutesForOutdated);
             }
         }
 
@@ -76,10 +74,12 @@ public class Fingerprinter {
         return substitutes;
     }
 
-    private static void purgeOutdatedFingerprintedVersions(Path dir, String fileName, String fingerprintedFileName)
+    private static Map<String, String> purgeOutdatedFingerprintedVersions(Path dir, String fileName,
+                                                                          String fingerprintedFileName)
             throws IOException {
-        String name = fileName.substring(0, fileName.lastIndexOf("."));
-        String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
+        var substitutes = new HashMap<String, String>();
+        var name = fileName.substring(0, fileName.lastIndexOf("."));
+        var ext = fileName.substring(fileName.lastIndexOf(".") + 1);
 
         DirectoryStream.Filter<Path> outdatedFilter =
                 entry -> {
@@ -92,7 +92,10 @@ public class Fingerprinter {
         try (DirectoryStream<Path> outdatedFiles = Files.newDirectoryStream(dir, outdatedFilter)) {
             for (Path outdatedFile : outdatedFiles) {
                 Files.delete(outdatedFile);
+                substitutes.put(outdatedFile.getFileName().toString(), fingerprintedFileName);
             }
         }
+
+        return substitutes;
     }
 }
