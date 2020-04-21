@@ -144,6 +144,10 @@ public class SiteGenerator {
     public void generate() throws IOException, GenerationException {
         buildWebsite();
 
+        // TODO: Clarify why this should not be supported in auto-build mode or simply
+        //  make it work in auto-build mode.
+        buildCrawlFiles();
+
         // TODO Check if there are any files in destination directory that are to be ignored
         //  (e.g. because ignore file has changed since last generation)
         //  Update 2020-03-02: Not sure if `generate` is the right place to do so.
@@ -153,8 +157,8 @@ public class SiteGenerator {
      * Does a site generation when a source file has been added, changed or deleted
      * @throws IOException
      */
-    public void generateOnFileChange() throws IOException {
-        buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
+    public void generateOnFileChange() throws IOException, GenerationException {
+        buildWebsite();
 
         WatchService watchService = FileSystems.getDefault().newWatchService();
         Map<WatchKey, Path> watchKeyMap = registerWatchServices(sourceDirectoryPath, watchService);
@@ -190,7 +194,7 @@ public class SiteGenerator {
 
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
                         if (sourceHtmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
-                            buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
+                            buildWebsite();
                         } else if (staticFileFilter.accept(changedPath) ||
                                 markdownFilter.accept(changedPath) ||
                                 markdownTemplateFilter.accept(changedPath)) {
@@ -198,13 +202,13 @@ public class SiteGenerator {
 
                             // Changed static assets and markdown articles don't require a full rebuild
                             // because their contents isn't copied over into another file.
-                            buildPagesAndAssets(parentDir, destinationDirectoryPath.resolve(parentDir));
+                            buildPartOfWebsite(parentDir);
                         } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
                             if (kind == ENTRY_CREATE) {
                                 watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
                                 LOG.debug("Registered autoBuild watcher for '{}'", changedPath);
                             }
-                            buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
+                            buildWebsite();
                         } else {
                             LOG.warn("No particular action executed for '{}' that triggered a change with kind '{}'",
                                     event.context(), event.kind());
@@ -272,13 +276,16 @@ public class SiteGenerator {
 
     private void buildWebsite() throws IOException, GenerationException {
         buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
-        buildCrawlFiles();
 
         // TODO: Somehow use purge-css as well if the respective flag is set
+        fingerprintAssetsIfEnabled();
+    }
 
-        if (this.shouldFingerprintAssets) {
-            fingerprintAssets();
-        }
+    private void buildPartOfWebsite(Path srcSubDir) throws IOException, GenerationException {
+        buildPagesAndAssets(srcSubDir, destinationDirectoryPath.resolve(srcSubDir));
+
+        // TODO: Somehow use purge-css as well if the respective flag is set
+        fingerprintAssetsIfEnabled();
     }
 
     private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
@@ -462,22 +469,24 @@ public class SiteGenerator {
         }
     }
 
-    private void fingerprintAssets() throws IOException {
-        Path stylesheetDir = destinationDirectoryPath.resolve("css");
+    private void fingerprintAssetsIfEnabled() throws IOException {
+        if (this.shouldFingerprintAssets) {
+            Path stylesheetDir = destinationDirectoryPath.resolve("css");
 
-        var assetSubstitutes = new HashMap<String, String>();
-        try {
-            assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
+            var assetSubstitutes = new HashMap<String, String>();
+            try {
+                assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
 
-            // TODO: Fingerprint media files, JS and so on
-        } catch (NoSuchAlgorithmException e) {
-            LOG.warn("Failed to fingerprint assets. Beware that your cache busting may not work.");
+                // TODO: Fingerprint media files, JS and so on
+            } catch (NoSuchAlgorithmException e) {
+                LOG.warn("Failed to fingerprint assets. Beware that your cache busting may not work.");
+            }
+
+
+            // Replace references
+            LOG.info(assetSubstitutes.toString());
+            AssetReferences.replaceAssetsReferences(destinationDirectoryPath, assetSubstitutes, settings);
         }
-
-
-        // Replace references
-        LOG.info(assetSubstitutes.toString());
-        AssetReferences.replaceAssetsReferences(destinationDirectoryPath, assetSubstitutes, settings);
     }
 
     private TemplateEngine setupTemplateEngine(Path sourceDirectoryPath) {

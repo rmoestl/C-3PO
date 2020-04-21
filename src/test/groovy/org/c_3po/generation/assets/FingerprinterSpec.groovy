@@ -32,6 +32,8 @@ class FingerprinterSpec extends Specification {
         then:
         Files.exists(cssDir.resolve("main.css"))
         Files.exists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
+
+        // TODO: Check contents of substitutes as well
     }
 
     def "fingerprints a css file located in a subdir" () {
@@ -41,6 +43,8 @@ class FingerprinterSpec extends Specification {
         then:
         Files.exists(cssDir.resolve("vendor/normalize.css"))
         Files.exists(cssDir.resolve("vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
+
+        // TODO: Check contents of substitutes as well
     }
 
     def "does not fingerprint an already fingerprinted css file again" () {
