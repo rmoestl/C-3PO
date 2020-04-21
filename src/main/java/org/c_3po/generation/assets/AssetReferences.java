@@ -45,6 +45,9 @@ public class AssetReferences {
         }
     }
 
+    // TODO: Also replace outdated fingerprinted asset refs. For example they can exist, if
+    //  the site is only being built partially because just a static asset has changed and
+    //  HTML files are not regenerated.
     private static void replaceStylesheetReferences(Document doc, Map<String, String> stylesheetSubstitutes,
                                                     Path docPath, Properties generatorSettings) {
         // TODO: Check if there any other way to reference a stylesheet?

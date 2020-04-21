@@ -79,8 +79,5 @@ class FingerprinterSpec extends Specification {
 
         and: "the old fingerprinted version gets deleted"
         Files.notExists(cssDir.resolve(oldFilename))
-
-        and: "the returned substitutes contain a pair for replacing the old fingerprinted version with the new one"
-        substitutes.get(oldFilename) == newFilename
     }
 }

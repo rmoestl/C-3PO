@@ -59,8 +59,7 @@ public class Fingerprinter {
                         dirAsUrlPath.resolve(fingerprintedFileName).toString());
 
                 // Purge any outdated fingerprinted versions of this file
-                var substitutesForOutdated = purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
-                substitutes.putAll(substitutesForOutdated);
+                purgeOutdatedFingerprintedVersions(dir, fileName, fingerprintedFileName);
             }
         }
 
@@ -74,10 +73,9 @@ public class Fingerprinter {
         return substitutes;
     }
 
-    private static Map<String, String> purgeOutdatedFingerprintedVersions(Path dir, String fileName,
+    private static void purgeOutdatedFingerprintedVersions(Path dir, String fileName,
                                                                           String fingerprintedFileName)
             throws IOException {
-        var substitutes = new HashMap<String, String>();
         var name = fileName.substring(0, fileName.lastIndexOf("."));
         var ext = fileName.substring(fileName.lastIndexOf(".") + 1);
 
@@ -92,10 +90,7 @@ public class Fingerprinter {
         try (DirectoryStream<Path> outdatedFiles = Files.newDirectoryStream(dir, outdatedFilter)) {
             for (Path outdatedFile : outdatedFiles) {
                 Files.delete(outdatedFile);
-                substitutes.put(outdatedFile.getFileName().toString(), fingerprintedFileName);
             }
         }
-
-        return substitutes;
     }
 }
