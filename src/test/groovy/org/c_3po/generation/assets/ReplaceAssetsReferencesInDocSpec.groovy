@@ -37,7 +37,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         "https://example.com/css/main.css" | "https://example.com/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
     }
 
-    // TODO: Test that refs to assets whose path isn't correct (main.css) shouldn't be replaced.
+    // TODO: Test that refs to assets whose path isn't correct (/main.css) shouldn't be replaced.
 
     @Unroll
     def "does not replace external stylesheet references of type '#ref'" (String ref) {

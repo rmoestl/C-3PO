@@ -290,6 +290,14 @@ C-3PO builds with [Gradle 3.0](https://docs.gradle.org/3.0/userguide/userguide.h
 **Hint**: you can put the **/bin** directory within the install directory to your operating system's search **PATH**. This way C-3PO will always be available on the command line.
 This is very useful when developing C-3PO and building a website with C-3PO at the same time.
 
+### Solution log
+
+#### Decide which absolute asset URLs to consider when fingerprinting assets, 2020-04-22
+When fingerprinting an asset, which hostnames are considered to be the same when it comes to replacing an absolute URL to this asset with its fingerprinted counterpart? Suppose the base URL is https://example.com. Should https://www.example.com be considered the same? For example, should https://www.example.com/css/main.css be replaced by https://www.example.com/css/main.<fingerprint>.css given the base URL (defined in `.c3posettings`) is https://example.com?
+
+This would be a cool feature for sure. But the problem is the implementation. Unless you would also consider something like https://blog.example.com and https://www.blog.example.com the same, finding out the *lower-level domain* (the "example" in example.com, the "foo" in foo.ac.at, sometimes also called *second-level domain*) isn't easy at all. First and foremost, because top-level domains can have two levels as well, such as foo.ac.at. Hence, the common advice is to use Guava's [InternetDomainName](https://github.com/google/guava/blob/ff9fb8d30edbba5357615ecebf69120f1de556f7/android/guava/src/com/google/common/net/InternetDomainName.java) class. It uses generated regular expressions to recognize valid top-level domains. Whenever a new top-level domain gets introduced, these regular expressions need to be adapted and regenerated.
+
+I decided not to support that feature because I didn't want to introduce a big library like Guava for such a small win. Also, it is questionable to reference one's assets through absolute URLs anyways and doing so by using either the non-www or www variant even more so. Just think about changing the domain name one time. You've got to change all those absolute URLs. Use relative URLs instead.
 
 ## More Resources
 If you want to dive deeper into C-3PO, have a look into the Wiki.

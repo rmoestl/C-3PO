@@ -95,18 +95,16 @@ public class AssetReferences {
     /**
      * Determines if the given URI is controlled by the website being built.
      *
-     * If the website's baseURL contains either a www or non-www host, www
-     * and non-www assets are considered to be served by this origin.
-     * If the baseURL does not contain a www or non-www host, thus contains
-     * a sub-domain different than "www", the given URI is only considered
-     * to be an internal asset if it's URI matches the same host.
+     * A resource is considered to be controlled by the website if
+     *   - (i) it is a relative URI without a host
+     *   - (ii) it is an absolute URI whose host part exactly matches
+     *     the host part of the website base URI, meaning that example.com
+     *     and www.example.com are considered to be different sites.
      */
-    private static boolean isAssetControlledByWebsite(URI hrefURI, URI baseURI) {
-
-        // TODO: Finish implementation.
+    private static boolean isAssetControlledByWebsite(URI hrefURI, URI websiteBaseURI) {
         boolean isURIIncludingHost = hrefURI.getHost() != null;
         if (isURIIncludingHost) {
-            return hrefURI.getHost().equals(baseURI.getHost());
+            return hrefURI.getHost().equals(websiteBaseURI.getHost());
         } else {
             return true;
         }
