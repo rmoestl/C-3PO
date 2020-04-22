@@ -25,27 +25,23 @@ class FingerprinterSpec extends Specification {
         cleanupFingerprintedFiles(cssDir)
     }
 
-    def "fingerprints a css file" () {
-        when:
+    def "fingerprints a all css files within a given dir and its sub-dirs" () {
+        when: "fingerprinting stylesheets is applied to a given dir"
         def substitutes = Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
-        then:
-        Files.exists(cssDir.resolve("main.css"))
+        then: "fingerprinted versions of all found css files are created"
         Files.exists(cssDir.resolve("main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
-
-        and:
-        substitutes.get("/css/main.css") == "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
-    }
-
-    def "fingerprints a css file located in a subdir" () {
-        when:
-        def substitutes = Fingerprinter.fingerprintStylesheets(cssDir, destDir)
-
-        then:
-        Files.exists(cssDir.resolve("vendor/normalize.css"))
         Files.exists(cssDir.resolve("vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
 
-        and:
+        and: "their original counterparts are not deleted"
+        Files.exists(cssDir.resolve("main.css"))
+        Files.exists(cssDir.resolve("vendor/normalize.css"))
+
+        and: "the substitutes map has the same length as the number of found css files"
+        substitutes.size() == 2
+
+        and: "the substitutes map maps each css file to its fingerprinted counterpart"
+        substitutes.get("/css/main.css") == "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
         substitutes.get("/css/vendor/normalize.css") ==
                 "/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
     }
