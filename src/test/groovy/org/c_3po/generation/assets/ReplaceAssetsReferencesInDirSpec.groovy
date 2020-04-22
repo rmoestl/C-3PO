@@ -11,7 +11,7 @@ import java.nio.file.Paths
 import static org.c_3po.generation.SiteGenerationHelpers.ensureDestinationDirIsClean
 import static org.c_3po.generation.SiteGenerationHelpers.generateSite
 
-class ReplaceAssetsReferencesSpec extends Specification {
+class ReplaceAssetsReferencesInDirSpec extends Specification {
     @Shared srcDir = Paths.get("src/test/resources/test-project-src")
     @Shared destDir = Paths.get("src/test/resources/test-project-build")
 

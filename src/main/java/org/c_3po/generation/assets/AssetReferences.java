@@ -18,9 +18,21 @@ import java.util.Properties;
 public class AssetReferences {
     private static final Logger LOG = LoggerFactory.getLogger(AssetReferences.class);
 
+    /**
+     * Replaces asset references in the supplied {@link Jsoup} document.
+     */
+    public static void replaceAssetsReferences(Document doc, Map<String, String> assetSubstitutes,
+                                               Properties generatorSettings) {
+        replaceStylesheetReferences(doc, assetSubstitutes, generatorSettings);
+    }
+
     // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
     //  and so on. This will allow to be more efficient by knowing which substitutes are relevant
     //  for which type of reference.
+
+    /**
+     * Replaces asset references in all HTML files found in supplied dir.
+     */
     public static void replaceAssetsReferences(Path dir, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) throws IOException {
         // Replace references
@@ -31,7 +43,8 @@ public class AssetReferences {
             for (Path htmlFile : htmlFiles) {
                 Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");
 
-                replaceStylesheetReferences(doc, assetSubstitutes, htmlFile, generatorSettings);
+                LOG.debug(String.format("Replacing asset references in '%s'", htmlFile));
+                replaceAssetsReferences(doc, assetSubstitutes, generatorSettings);
 
                 Files.write(htmlFile, doc.outerHtml().getBytes());
             }
@@ -49,7 +62,7 @@ public class AssetReferences {
     //  the site is only being built partially because just a static asset has changed and
     //  HTML files are not regenerated.
     private static void replaceStylesheetReferences(Document doc, Map<String, String> stylesheetSubstitutes,
-                                                    Path docPath, Properties generatorSettings) {
+                                                    Properties generatorSettings) {
         // TODO: Check if there any other way to reference a stylesheet?
         var elements = doc.select("link[rel='stylesheet']");
         for (org.jsoup.nodes.Element element : elements) {
@@ -71,7 +84,7 @@ public class AssetReferences {
                         //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
                         element.attr("href", href.replace(assetFileName, substituteFileName));
                     } else {
-                        LOG.warn(String.format("Failed to substitute asset resource '%s' found in %s", href, docPath));
+                        LOG.warn(String.format("Failed to substitute asset resource '%s'", href));
                     }
                 }
             } catch (URISyntaxException ignored) {
