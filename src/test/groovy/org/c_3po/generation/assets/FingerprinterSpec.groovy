@@ -71,7 +71,7 @@ class FingerprinterSpec extends Specification {
         Files.write(destDir.resolve("css/main.css"), ".button { color: blue; }".getBytes(), StandardOpenOption.APPEND)
 
         and: "fingerprinted again"
-        def substitutes = Fingerprinter.fingerprintStylesheets(cssDir, destDir)
+        Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
         then: "the new fingerprinted version gets created"
         Files.exists(cssDir.resolve(newFilename))
