@@ -275,6 +275,8 @@ public class SiteGenerator {
     }
 
     private void buildWebsite() throws IOException, GenerationException {
+        LOG.debug("Building entire website");
+
         buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
 
         // TODO: Somehow use purge-css as well if the respective flag is set
@@ -282,6 +284,8 @@ public class SiteGenerator {
     }
 
     private void buildPartOfWebsite(Path srcSubDir) throws IOException, GenerationException {
+        LOG.debug("Building part of website contained in '{}'", srcSubDir);
+
         buildPagesAndAssets(srcSubDir, destinationDirectoryPath.resolve(srcSubDir));
 
         // TODO: Somehow use purge-css as well if the respective flag is set
@@ -289,7 +293,7 @@ public class SiteGenerator {
     }
 
     private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
-        LOG.debug("Building pages contained in '{}'", sourceDir);
+        LOG.debug("Building pages and assets contained in '{}'", sourceDir);
 
         // Clear Thymeleaf's template cache
         templateEngine.clearTemplateCache();
