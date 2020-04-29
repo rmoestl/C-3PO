@@ -21,9 +21,9 @@ public class AssetReferences {
     /**
      * Replaces asset references in the supplied {@link Jsoup} document.
      */
-    public static void replaceAssetsReferences(Document doc, Map<String, String> assetSubstitutes,
+    public static void replaceAssetsReferences(Document doc, URI docURI, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) {
-        replaceStylesheetReferences(doc, assetSubstitutes, generatorSettings);
+        replaceStylesheetReferences(doc, docURI, assetSubstitutes, generatorSettings);
     }
 
     // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
@@ -42,9 +42,10 @@ public class AssetReferences {
         try (var htmlFiles = Files.newDirectoryStream(dir, FileFilters.htmlFilter)) {
             for (Path htmlFile : htmlFiles) {
                 Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");
+                URI docURI = htmlFile.toUri();
 
                 LOG.debug(String.format("Replacing asset references in '%s'", htmlFile));
-                replaceAssetsReferences(doc, assetSubstitutes, generatorSettings);
+                replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings);
 
                 Files.write(htmlFile, doc.outerHtml().getBytes());
             }
@@ -61,7 +62,7 @@ public class AssetReferences {
     // TODO: Also replace outdated fingerprinted asset refs. For example they can exist, if
     //  the site is only being built partially because just a static asset has changed and
     //  HTML files are not regenerated.
-    private static void replaceStylesheetReferences(Document doc, Map<String, String> stylesheetSubstitutes,
+    private static void replaceStylesheetReferences(Document doc, URI docURI, Map<String, String> stylesheetSubstitutes,
                                                     Properties generatorSettings) {
         // TODO: Check if there any other way to reference a stylesheet?
         var elements = doc.select("link[rel='stylesheet']");
@@ -71,7 +72,15 @@ public class AssetReferences {
                 URI hrefURI = new URI(href);
 
                 if (isAssetControlledByWebsite(hrefURI, new URI(generatorSettings.getProperty("baseUrl")))) {
-                    String assetPath = translateToAssetPath(hrefURI, determineBaseURI(doc, generatorSettings));
+
+                    // TODO: determineBaseURI isn't really doing what it's meant to do.
+                    //   Originally it was not supposed to simply return the base site URI,
+                    //   but to return the base URI for resolving relative asset refs which depends
+                    //   on various parameters, e.g. the contents of <base> tag if there is one.
+                    //   But determining the base URI here is unnecessary anyways. Instead, it
+                    //   should only be called if the ref in question is a relative.
+                    var baseSiteURI = determineBaseURI(doc, generatorSettings);
+                    String assetPath = translateToAssetPath(hrefURI, docURI, baseSiteURI);
 
                     String substitutePath = stylesheetSubstitutes.get(assetPath);
                     if (substitutePath != null) {
@@ -110,7 +119,7 @@ public class AssetReferences {
         }
     }
 
-    private static String translateToAssetPath(final URI hrefURI, final URI baseURI) {
+    private static String translateToAssetPath(URI assetRefURI, URI docURI, URI baseSiteURI) {
         /*
             The difficulty is to look at an URL and identify which
             asset is referenced by it.
@@ -142,24 +151,25 @@ public class AssetReferences {
             See https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url.
         */
 
-        if (isDocumentRelativeURI(hrefURI)) {
+        if (isDocumentRelativeURI(assetRefURI)) {
 
             // TODO: Take <base> into account
             // TODO: Add leading slash might be brittle but fact is that .getPath() after .resolve()
             //  does not render a leading slash if relative URI is of form `foo/bar.css` and baseURI
-            //  does not have a path portion. It might be even more complicated like that.
-            String uriPath = baseURI.resolve(hrefURI).getPath();
-            return uriPath.startsWith("/") ? uriPath : "/" + uriPath;
-        } else if (isProtocolRelativeURI(hrefURI)) {
-            return hrefURI.getPath();
-        } else if (isHostRelativeURI(hrefURI)) {
-            return hrefURI.toString();
-        } else if (hrefURI.isAbsolute()) {
-            return hrefURI.getPath();
+            //  does not have a path portion. It might be even more complicated than that.
+            var baseTagHref = ""; // TODO: Implement parsing.
+            var assetPath = docURI.resolve(baseTagHref).resolve(assetRefURI).normalize().getPath();
+            return assetPath.startsWith("/") ? assetPath : "/" + assetPath;
+        } else if (isProtocolRelativeURI(assetRefURI)) {
+            return assetRefURI.getPath();
+        } else if (isHostRelativeURI(assetRefURI)) {
+            return assetRefURI.toString();
+        } else if (assetRefURI.isAbsolute()) {
+            return assetRefURI.getPath();
         } else {
 
             // TODO: Decide if this should be a warning. I think so.
-            return hrefURI.toString();
+            return assetRefURI.toString();
         }
     }
 

@@ -19,13 +19,16 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         generatorSettings.load(Files.newInputStream(srcDir.resolve(".c3posettings")))
     }
 
+    // TODO: Is there a difference between docURI being "/about/" and "/about" when it comes to resolve relative paths?
+
     @Unroll
     def "replaces internal stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
         given:
         def doc = createDoc(ref)
+        def docURI = URI.create("/about.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
@@ -33,19 +36,57 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         where:
         ref | refPastReplacement
         "/css/main.css" | "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
-        "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
         "https://example.com/css/main.css" | "https://example.com/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
     }
 
-    // TODO: Test that refs to assets whose path isn't correct (/main.css) shouldn't be replaced.
-
     @Unroll
-    def "does not replace external stylesheet references of type '#ref'" (String ref) {
+    def "replaces relative refs of type '#ref' in docs with path '#docURI'" (String ref, String docURI,
+                                                                             String refPastReplacement) {
         given:
         def doc = createDoc(ref)
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferences(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+
+        where:
+        ref | docURI | refPastReplacement
+        "css/main.css" | "/about.html" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "./css/main.css" | "/about.html" | "./css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "../css/main.css" | "/blog/a-blog-article.html" | "../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "./../css/main.css" | "/blog/a-blog-article.html" | "./../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "./../../css/main.css" | "/blog/2020/a-blog-article.html" | "./../../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "../../css/main.css" | "/blog/2020/a-blog-article.html" | "../../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+    }
+
+    @Unroll
+    def "skips replacing relative refs to non-exiting assets like '#ref' in docs with path '#docURI'" (String ref,
+                                                                                                       String docURI) {
+        given:
+        def doc = createDoc(ref)
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+
+        where:
+        docURI | ref
+        "/index.html" | "css/foo.css"
+        "/blog/a-blog-article.html" | "css/main.css"
+    }
+
+    @Unroll
+    def "skips replacing external stylesheet references of type '#ref'" (String ref) {
+        given:
+        def doc = createDoc(ref)
+        def docURI = URI.create("/blog/2020/03/04/fine-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
