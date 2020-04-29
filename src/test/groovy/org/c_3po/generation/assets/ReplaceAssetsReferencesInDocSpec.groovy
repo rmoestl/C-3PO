@@ -8,7 +8,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 class ReplaceAssetsReferencesInDocSpec extends Specification {
-    def assetSubstitutes = [ '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css' ]
+    def assetSubstitutes = [
+            '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css',
+            '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css'
+    ]
     def generatorSettings = new Properties()
 
     def setup() {
@@ -20,6 +23,26 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     // TODO: Is there a difference between docURI being "/about/" and "/about" when it comes to resolve relative paths?
+
+    @Unroll
+    def "replaces absolute stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
+        given:
+        def doc = createDoc(ref)
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+
+        where:
+        ref | refPastReplacement
+        "https://example.com/css/main.css" | "https://example.com/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "https://example.com/css/../css/main.css" | "https://example.com/css/../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "https://example.com/css/vendor/normalize.css" | "https://example.com/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
+        "https://example.com/css/vendor/../vendor/normalize.css" | "https://example.com/css/vendor/../vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
+    }
 
     @Unroll
     def "replaces internal stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
@@ -36,7 +59,6 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         where:
         ref | refPastReplacement
         "/css/main.css" | "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
-        "https://example.com/css/main.css" | "https://example.com/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
     }
 
     @Unroll

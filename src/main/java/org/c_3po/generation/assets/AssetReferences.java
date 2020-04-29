@@ -165,7 +165,7 @@ public class AssetReferences {
         } else if (isHostRelativeURI(assetRefURI)) {
             return assetRefURI.toString();
         } else if (assetRefURI.isAbsolute()) {
-            return assetRefURI.getPath();
+            return assetRefURI.normalize().getPath();
         } else {
 
             // TODO: Decide if this should be a warning. I think so.
