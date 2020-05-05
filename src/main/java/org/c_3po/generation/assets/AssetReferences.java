@@ -162,8 +162,8 @@ public class AssetReferences {
             return assetPath.startsWith("/") ? assetPath : "/" + assetPath;
         } else if (isProtocolRelativeURI(assetRefURI)) {
             return assetRefURI.getPath();
-        } else if (isHostRelativeURI(assetRefURI)) {
-            return assetRefURI.toString();
+        } else if (isRootRelativeURI(assetRefURI)) {
+            return assetRefURI.normalize().toString();
         } else if (assetRefURI.isAbsolute()) {
             return assetRefURI.normalize().getPath();
         } else {
@@ -178,7 +178,7 @@ public class AssetReferences {
         return new URI(generatorSettings.getProperty("baseUrl"));
     }
 
-    private static boolean isHostRelativeURI(URI uri) {
+    private static boolean isRootRelativeURI(URI uri) {
         return uri.getHost() == null && uri.toString().startsWith("/");
     }
 

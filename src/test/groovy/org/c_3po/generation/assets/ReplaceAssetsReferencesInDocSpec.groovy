@@ -45,10 +45,10 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "replaces internal stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
+    def "replaces root-relative stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
         given:
         def doc = createDoc(ref)
-        def docURI = URI.create("/about.html")
+        def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
@@ -59,6 +59,9 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         where:
         ref | refPastReplacement
         "/css/main.css" | "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "/css/../css/main.css" | "/css/../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "/css/vendor/normalize.css" | "/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
+        "/css/vendor/../vendor/normalize.css" | "/css/vendor/../vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
     }
 
     @Unroll
