@@ -64,7 +64,8 @@ public class AssetReferences {
     //  HTML files are not regenerated.
     private static void replaceStylesheetReferences(Document doc, URI docURI, Map<String, String> stylesheetSubstitutes,
                                                     Properties generatorSettings) {
-        // TODO: Check if there any other way to reference a stylesheet?
+        // Note: According to https://html.spec.whatwg.org/#interactions-of-styling-and-scripting,
+        // `<link rel="stylesheet">` is the only way to load an external stylesheet.
         var elements = doc.select("link[rel='stylesheet']");
         for (org.jsoup.nodes.Element element : elements) {
             String href = element.attr("href");
