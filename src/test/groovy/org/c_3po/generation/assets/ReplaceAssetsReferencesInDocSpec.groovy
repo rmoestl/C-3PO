@@ -65,6 +65,24 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
+    def "skips replacing root-relative stylesheet refs to non-exiting assets like '#ref'" (String ref) {
+        given:
+        def doc = createDoc(ref)
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+
+        where:
+        ref | _
+        "/css/foo.css" | _
+        "/css/vendor/jquery-ui.css" | _
+    }
+
+    @Unroll
     def "replaces relative refs of type '#ref' in docs with path '#docURI'" (String ref, String docURI,
                                                                              String refPastReplacement) {
         given:
