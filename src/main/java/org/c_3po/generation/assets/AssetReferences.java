@@ -161,7 +161,7 @@ public class AssetReferences {
             var assetPath = docURI.resolve(baseTagHref).resolve(assetRefURI).normalize().getPath();
             return assetPath.startsWith("/") ? assetPath : "/" + assetPath;
         } else if (isProtocolRelativeURI(assetRefURI)) {
-            return assetRefURI.getPath();
+            return assetRefURI.normalize().getPath();
         } else if (isRootRelativeURI(assetRefURI)) {
             return assetRefURI.normalize().toString();
         } else if (assetRefURI.isAbsolute()) {

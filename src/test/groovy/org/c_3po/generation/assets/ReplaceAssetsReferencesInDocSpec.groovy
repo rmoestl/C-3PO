@@ -63,6 +63,44 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
+    def "replaces protocol-relative stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
+        given:
+        def doc = createDoc(ref)
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+
+        where:
+        ref | refPastReplacement
+        "//example.com/css/main.css" | "//example.com/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "//example.com/css/../css/main.css" | "//example.com/css/../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "//example.com/css/vendor/normalize.css" | "//example.com/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
+        "//example.com/css/vendor/../vendor/normalize.css" | "//example.com/css/vendor/../vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
+    }
+
+    @Unroll
+    def "skips replacing protocol-relative stylesheet refs to non-exiting assets like '#ref'" (String ref) {
+        given:
+        def doc = createDoc(ref)
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+
+        where:
+        ref | _
+        "//example.com/css/foo.css" | _
+        "//example.com/css/vendor/jquery-ui.css" | _
+    }
+
+    @Unroll
     def "replaces root-relative stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
         given:
         def doc = createDoc(ref)
