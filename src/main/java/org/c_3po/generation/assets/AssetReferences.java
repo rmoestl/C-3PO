@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -69,30 +68,25 @@ public class AssetReferences {
         var elements = doc.select("link[rel='stylesheet']");
         for (org.jsoup.nodes.Element element : elements) {
             String href = element.attr("href");
-            try {
-                // TODO: Use URI.create() instead.
-                URI hrefURI = new URI(href);
+            var stylesheetURI = URI.create(href);
+            var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
+            var docBaseURI = determineDocBaseURI(docURI, doc);
+            if (isAssetControlledByWebsite(stylesheetURI, websiteBaseURI, docBaseURI)) {
+                String assetPath = translateToAssetPath(stylesheetURI, docBaseURI);
 
-                var websiteBaseURI = new URI(generatorSettings.getProperty("baseUrl"));
-                var docBaseURI = determineDocBaseURI(docURI, doc);
-                if (isAssetControlledByWebsite(hrefURI, websiteBaseURI, docBaseURI)) {
-                    String assetPath = translateToAssetPath(hrefURI, docBaseURI);
+                String substitutePath = stylesheetSubstitutes.get(assetPath);
+                if (substitutePath != null) {
 
-                    String substitutePath = stylesheetSubstitutes.get(assetPath);
-                    if (substitutePath != null) {
+                    // Note: Replace the asset's name only and leave the URL untouched otherwise.
+                    String assetFileName = Paths.get(assetPath).getFileName().toString();
+                    String substituteFileName = Paths.get(substitutePath).getFileName().toString();
 
-                        // Note: Replace the asset's name only and leave the URL untouched otherwise.
-                        String assetFileName = Paths.get(assetPath).getFileName().toString();
-                        String substituteFileName = Paths.get(substitutePath).getFileName().toString();
-
-                        // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
-                        //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                        element.attr("href", href.replace(assetFileName, substituteFileName));
-                    } else {
-                        LOG.warn(String.format("Failed to substitute asset resource '%s'", href));
-                    }
+                    // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
+                    //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
+                    element.attr("href", href.replace(assetFileName, substituteFileName));
+                } else {
+                    LOG.warn(String.format("Failed to substitute asset resource '%s'", href));
                 }
-            } catch (URISyntaxException ignored) {
             }
         }
     }
