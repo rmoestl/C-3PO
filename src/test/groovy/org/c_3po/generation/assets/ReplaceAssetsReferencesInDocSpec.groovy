@@ -161,6 +161,40 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
+    def "factors in <base> element with href of type '#baseHref' when replacing relative refs" (String baseHref,
+                                                                                                String ref,
+                                                                                                String refPastReplacement) {
+        given:
+        def doc = createDoc(ref, baseHref)
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+
+        where:
+        baseHref | ref | refPastReplacement
+        "https://example.com/" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "https://example.com/css" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "https://example.com/css/" | "main.css" | "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "https://example.com/css/" | "./main.css" | "./main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "https://example.com/css/" | "../css/main.css" | "../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "//example.com/" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "//example.com/css" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "//example.com/css/" | "main.css" | "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "/" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "/css" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "/css/" | "main.css" | "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        ".." | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "../css" | "css/main.css" | "css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "../css/" | "main.css" | "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "../css/" | "main.css" | "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        "../blog/" | "../css/main.css" | "../css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+    }
+
+    @Unroll
     def "skips replacing relative refs to non-exiting assets like '#ref' in docs with path '#docURI'" (String ref,
                                                                                                        String docURI) {
         given:
@@ -176,6 +210,19 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         docURI | ref
         "/index.html" | "css/foo.css"
         "/blog/a-blog-article.html" | "css/main.css"
+    }
+
+    def "skips replacing relative refs if <base> element refers to an external URI" () {
+        given:
+        def ref = "css/main.css"
+        def doc = createDoc(ref, "https://google.com")
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
     }
 
     @Unroll
@@ -197,12 +244,14 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         "https://www.google.com/css/main.css" | _
     }
 
-    def createDoc(String assetRef) {
+    def createDoc(String assetRef, String baseHref = null) {
+        def baseElem = baseHref ? """<base href="${baseHref}">""" : ""
         return Jsoup.parse("""\
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <meta charset="UTF-8">
+          ${baseElem}
           <title>Foo</title>
           <link href="${assetRef}" rel="stylesheet">
         </head>

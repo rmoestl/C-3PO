@@ -70,18 +70,13 @@ public class AssetReferences {
         for (org.jsoup.nodes.Element element : elements) {
             String href = element.attr("href");
             try {
+                // TODO: Use URI.create() instead.
                 URI hrefURI = new URI(href);
 
-                if (isAssetControlledByWebsite(hrefURI, new URI(generatorSettings.getProperty("baseUrl")))) {
-
-                    // TODO: determineBaseURI isn't really doing what it's meant to do.
-                    //   Originally it was not supposed to simply return the base site URI,
-                    //   but to return the base URI for resolving relative asset refs which depends
-                    //   on various parameters, e.g. the contents of <base> tag if there is one.
-                    //   But determining the base URI here is unnecessary anyways. Instead, it
-                    //   should only be called if the ref in question is a relative.
-                    var baseSiteURI = determineBaseURI(doc, generatorSettings);
-                    String assetPath = translateToAssetPath(hrefURI, docURI, baseSiteURI);
+                var websiteBaseURI = new URI(generatorSettings.getProperty("baseUrl"));
+                var docBaseURI = determineDocBaseURI(docURI, doc);
+                if (isAssetControlledByWebsite(hrefURI, websiteBaseURI, docBaseURI)) {
+                    String assetPath = translateToAssetPath(hrefURI, docBaseURI);
 
                     String substitutePath = stylesheetSubstitutes.get(assetPath);
                     if (substitutePath != null) {
@@ -106,22 +101,27 @@ public class AssetReferences {
      * Determines if the given URI is controlled by the website being built.
      *
      * A resource is considered to be controlled by the website if
-     *   - (i) it is a relative URI without a host
+     *   - (i) it is a relative URI whose base is not external
+     *     if a valid <base> element exists.
      *   - (ii) it is an absolute URI whose host part exactly matches
      *     the host part of the website base URI, meaning that example.com
      *     and www.example.com are considered to be different sites.
      */
-    private static boolean isAssetControlledByWebsite(URI hrefURI, URI websiteBaseURI) {
-        boolean isURIIncludingHost = hrefURI.getHost() != null;
-        if (isURIIncludingHost) {
+    private static boolean isAssetControlledByWebsite(URI hrefURI, URI websiteBaseURI, URI docBaseURI) {
+        var hrefURIHasHost = hrefURI.getHost() != null;
+        var docBaseURIHasHost = docBaseURI.getHost() != null;
+        if (hrefURIHasHost) {
             return hrefURI.getHost().equals(websiteBaseURI.getHost());
+        } else if (isDocumentRelativeURI(hrefURI) && docBaseURIHasHost) {
+            return docBaseURI.getHost().equals(websiteBaseURI.getHost());
         } else {
             return true;
         }
     }
 
-    private static String translateToAssetPath(URI assetRefURI, URI docURI, URI baseSiteURI) {
+    private static String translateToAssetPath(URI assetRefURI, URI docBaseURI) {
         /*
+            TODO: Turn the comment into a function description
             The difficulty is to look at an URL and identify which
             asset is referenced by it.
 
@@ -153,13 +153,11 @@ public class AssetReferences {
         */
 
         if (isDocumentRelativeURI(assetRefURI)) {
+            var assetPath = docBaseURI.resolve(assetRefURI).normalize().getPath();
 
-            // TODO: Take <base> into account
             // TODO: Add leading slash might be brittle but fact is that .getPath() after .resolve()
             //  does not render a leading slash if relative URI is of form `foo/bar.css` and baseURI
             //  does not have a path portion. It might be even more complicated than that.
-            var baseTagHref = ""; // TODO: Implement parsing.
-            var assetPath = docURI.resolve(baseTagHref).resolve(assetRefURI).normalize().getPath();
             return assetPath.startsWith("/") ? assetPath : "/" + assetPath;
         } else if (isProtocolRelativeURI(assetRefURI)) {
             return assetRefURI.normalize().getPath();
@@ -174,9 +172,22 @@ public class AssetReferences {
         }
     }
 
-    // TODO: Require the document's URI. What? Maybe the <base> tag is meant.
-    private static URI determineBaseURI(Document doc, Properties generatorSettings) throws URISyntaxException {
-        return new URI(generatorSettings.getProperty("baseUrl"));
+    /**
+     * Determines the effective base URI of the document that is a result
+     * of the document's URI and an optional <base> element included in
+     * the markup itself.
+     *
+     * @param docURI the URI of the document
+     * @param doc the document itself that may include a <base> element
+     * @return the effective document's base URI against which
+     * relative sub-resources ought to be resolved
+     */
+    private static URI determineDocBaseURI(URI docURI, Document doc) {
+
+        // Note: The first base element with a href attribute is considered
+        // valid in HTML. See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base.
+        var baseElem = doc.selectFirst("base[href]");
+        return baseElem != null ? docURI.resolve(baseElem.attr("href")) : docURI;
     }
 
     private static boolean isRootRelativeURI(URI uri) {
