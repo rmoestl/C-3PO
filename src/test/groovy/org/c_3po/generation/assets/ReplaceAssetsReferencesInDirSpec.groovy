@@ -2,6 +2,7 @@ package org.c_3po.generation.assets
 
 import org.c_3po.io.Directories
 import org.jsoup.Jsoup
+import org.jsoup.select.Elements
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -53,17 +54,41 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
         assertRefsReplacedIn("blog/first-blog-post.html")
     }
 
+    def "factors in a HTML document's path when replacing relative asset refs" () {
+        given: "an asset referenced with a relative URI"
+        assertAssetsWithRelativeURIIn("blog.html")
+        assertAssetsWithRelativeURIIn("about.html")
+        assertAssetsWithRelativeURIIn("blog/first-blog-post.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(destDirClone, assetSubstitutes, generatorSettings)
+
+        then:
+        assertRefsReplacedIn("blog.html")
+        assertRefsReplacedIn("about.html")
+        assertRefsReplacedIn("blog/first-blog-post.html")
+    }
+
     def cleanup() {
         destDirClone.toFile().deleteDir()
     }
 
+    void assertAssetsWithRelativeURIIn(htmlFilePath) {
+        def elements = parseStylesheetElems(htmlFilePath)
+        assert elements.get(0).attr("href") == 'css/main.css'
+    }
+
     void assertRefsReplacedIn(htmlFilePath) {
-        def doc = Jsoup.parse(destDirClone.resolve(htmlFilePath).toFile(), "UTF-8")
-        def elements = doc.select("link[rel='stylesheet']")
+        def elements = parseStylesheetElems(htmlFilePath)
 
         // Note: Assertions are strongly coupled to the order the stylesheets are referenced
         // in the test project. Thus, obviously Jsoup returns elements in document order.
-        assert elements.get(0).attr("href") == '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css'
+        assert elements.get(0).attr("href") == 'css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css'
         assert elements.get(1).attr("href") == '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css'
+    }
+
+    Elements parseStylesheetElems(htmlFilePath) {
+        def doc = Jsoup.parse(destDirClone.resolve(htmlFilePath).toFile(), "UTF-8")
+        return doc.select("link[rel='stylesheet']")
     }
 }

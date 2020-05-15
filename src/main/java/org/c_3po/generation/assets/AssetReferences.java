@@ -30,9 +30,21 @@ public class AssetReferences {
     //  for which type of reference.
 
     /**
-     * Replaces asset references in all HTML files found in supplied dir.
+     * Replaces asset references in all HTML files found in supplied dir and sub dirs.
      */
     public static void replaceAssetsReferences(Path dir, Map<String, String> assetSubstitutes,
+                                               Properties generatorSettings) throws IOException {
+        replaceAssetsReferences(dir, dir, assetSubstitutes, generatorSettings);
+    }
+
+    /**
+     * Implementation method for replacing asset references.
+     * @param dir dir containing HTML files to process
+     * @param rootDir root directory of the site needed to calculate
+     *                the path of HTML files in order to properly resolve
+     *                relative asset refs
+     */
+    private static void replaceAssetsReferences(Path dir, Path rootDir, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) throws IOException {
         // Replace references
         // TODO: Replace all refs in all docs in one pass
@@ -41,7 +53,7 @@ public class AssetReferences {
         try (var htmlFiles = Files.newDirectoryStream(dir, FileFilters.htmlFilter)) {
             for (Path htmlFile : htmlFiles) {
                 Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");
-                URI docURI = htmlFile.toUri();
+                URI docURI = URI.create(rootDir.relativize(dir).resolve(htmlFile.getFileName()).toString());
 
                 LOG.debug(String.format("Replacing asset references in '%s'", htmlFile));
                 replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings);
@@ -53,7 +65,7 @@ public class AssetReferences {
         // Replace refs in sub directories
         try (var subDirs = FileFilters.subDirStream(dir)) {
             for (var subDir : subDirs) {
-                replaceAssetsReferences(subDir, assetSubstitutes, generatorSettings);
+                replaceAssetsReferences(subDir, rootDir, assetSubstitutes, generatorSettings);
             }
         }
     }
