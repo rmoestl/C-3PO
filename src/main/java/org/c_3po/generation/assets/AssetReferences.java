@@ -13,9 +13,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 public class AssetReferences {
     private static final Logger LOG = LoggerFactory.getLogger(AssetReferences.class);
+    private static final Pattern FINGERPRINTED_ASSET_URI_PATTERN =
+            Pattern.compile("^(.*)\\.[0123456789abcdef]{40}(\\.css)$");
 
     /**
      * Replaces asset references in the supplied {@link Jsoup} document.
@@ -48,8 +51,6 @@ public class AssetReferences {
                                                Properties generatorSettings) throws IOException {
         // Replace references
         // TODO: Replace all refs in all docs in one pass
-        // TODO: If site is built into a non-empty destination dir, also replace outdated fingerprinted refs, though
-        //  that might be a feature of the calling code whose job is to supply the assetSubstitutes map.
         try (var htmlFiles = Files.newDirectoryStream(dir, FileFilters.htmlFilter)) {
             for (Path htmlFile : htmlFiles) {
                 Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");
@@ -70,9 +71,6 @@ public class AssetReferences {
         }
     }
 
-    // TODO: Also replace outdated fingerprinted asset refs. For example they can exist, if
-    //  the site is only being built partially because just a static asset has changed and
-    //  HTML files are not regenerated.
     private static void replaceStylesheetReferences(Document doc, URI docURI, Map<String, String> stylesheetSubstitutes,
                                                     Properties generatorSettings) {
         // Note: According to https://html.spec.whatwg.org/#interactions-of-styling-and-scripting,
@@ -90,12 +88,12 @@ public class AssetReferences {
                 if (substitutePath != null) {
 
                     // Note: Replace the asset's name only and leave the URL untouched otherwise.
-                    String assetFileName = Paths.get(assetPath).getFileName().toString();
-                    String substituteFileName = Paths.get(substitutePath).getFileName().toString();
+                    String oldAssetFileName = Paths.get(stylesheetURI.getPath()).getFileName().toString();
+                    String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
 
                     // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
                     //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                    element.attr("href", href.replace(assetFileName, substituteFileName));
+                    element.attr("href", href.replace(oldAssetFileName, newAssetFileName));
                 } else {
                     LOG.warn(String.format("Failed to substitute asset resource '%s'", href));
                 }
@@ -158,24 +156,33 @@ public class AssetReferences {
             See https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url.
         */
 
+        String assetPath = "";
+
         if (isDocumentRelativeURI(assetRefURI)) {
-            var assetPath = docBaseURI.resolve(assetRefURI).normalize().getPath();
+            assetPath = docBaseURI.resolve(assetRefURI).normalize().getPath();
 
             // TODO: Add leading slash might be brittle but fact is that .getPath() after .resolve()
             //  does not render a leading slash if relative URI is of form `foo/bar.css` and baseURI
             //  does not have a path portion. It might be even more complicated than that.
-            return assetPath.startsWith("/") ? assetPath : "/" + assetPath;
+            assetPath = assetPath.startsWith("/") ? assetPath : "/" + assetPath;
         } else if (isProtocolRelativeURI(assetRefURI)) {
-            return assetRefURI.normalize().getPath();
+            assetPath = assetRefURI.normalize().getPath();
         } else if (isRootRelativeURI(assetRefURI)) {
-            return assetRefURI.normalize().toString();
+            assetPath = assetRefURI.normalize().toString();
         } else if (assetRefURI.isAbsolute()) {
-            return assetRefURI.normalize().getPath();
+            assetPath = assetRefURI.normalize().getPath();
         } else {
 
             // TODO: Decide if this should be a warning. I think so.
-            return assetRefURI.toString();
+            assetPath = assetRefURI.toString();
         }
+
+        return cutOptionalFingerprint(assetPath);
+    }
+
+    private static String cutOptionalFingerprint(String assetPath) {
+        var matcher = FINGERPRINTED_ASSET_URI_PATTERN.matcher(assetPath);
+        return matcher.matches() ? matcher.group(1) + matcher.group(2) : assetPath;
     }
 
     /**

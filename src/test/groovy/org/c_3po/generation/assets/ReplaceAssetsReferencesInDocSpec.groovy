@@ -244,6 +244,20 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         "https://www.google.com/css/main.css" | _
     }
 
+    def "replaces outdated fingerprinted asset refs" () {
+        given: "a document that references a version of a static asset that is no longer valid (because it has changed)"
+        def outdatedRef = "/css/main.3068d19b5816a4c201a3d72ca4e5e7433537b947.css"
+        def doc = createDoc(outdatedRef)
+        def docURI = URI.create("/about.html")
+
+        when: "replacing references"
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then: "this outdated fingerprinted asset ref is replaced by the new fingerprinted ref"
+        doc.select("link[rel='stylesheet']").get(0).attr("href") ==
+                "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+    }
+
     def createDoc(String assetRef, String baseHref = null) {
         def baseElem = baseHref ? """<base href="${baseHref}">""" : ""
         return Jsoup.parse("""\
