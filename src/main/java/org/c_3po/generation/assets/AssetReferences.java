@@ -3,6 +3,7 @@ package org.c_3po.generation.assets;
 import org.c_3po.io.FileFilters;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,7 @@ public class AssetReferences {
     public static void replaceAssetsReferences(Document doc, URI docURI, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) {
         replaceStylesheetReferences(doc, docURI, assetSubstitutes, generatorSettings);
+        replaceJSReferences(doc, docURI, assetSubstitutes, generatorSettings);
     }
 
     // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
@@ -76,7 +78,7 @@ public class AssetReferences {
         // Note: According to https://html.spec.whatwg.org/#interactions-of-styling-and-scripting,
         // `<link rel="stylesheet">` is the only way to load an external stylesheet.
         var elements = doc.select("link[rel='stylesheet']");
-        for (org.jsoup.nodes.Element element : elements) {
+        for (Element element : elements) {
             String href = element.attr("href");
             var stylesheetURI = URI.create(href);
             var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
@@ -96,6 +98,37 @@ public class AssetReferences {
                     element.attr("href", href.replace(oldAssetFileName, newAssetFileName));
                 } else {
                     LOG.warn(String.format("Failed to substitute asset resource '%s'", href));
+                }
+            }
+        }
+    }
+
+    // TODO: DRY.
+    private static void replaceJSReferences(Document doc, URI docURI, Map<String, String> substitutes,
+                                            Properties generatorSettings) {
+        // TODO: Is this the only way to load an external JavaScript file?
+        // TODO: Could a script tag also load something else than JavaScript?
+        var elements = doc.select("script[src]");
+        for (Element element : elements) {
+            String assetRefValue = element.attr("src");
+            var assetRevValueURI = URI.create(assetRefValue);
+            var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
+            var docBaseURI = determineDocBaseURI(docURI, doc);
+            if (isAssetControlledByWebsite(assetRevValueURI, websiteBaseURI, docBaseURI)) {
+                String assetPath = translateToAssetPath(assetRevValueURI, docBaseURI);
+
+                String substitutePath = substitutes.get(assetPath);
+                if (substitutePath != null) {
+
+                    // Note: Replace the asset's name only and leave the URL untouched otherwise.
+                    String oldAssetFileName = Paths.get(assetRevValueURI.getPath()).getFileName().toString();
+                    String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
+
+                    // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
+                    //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
+                    element.attr("src", assetRefValue.replace(oldAssetFileName, newAssetFileName));
+                } else {
+                    LOG.warn(String.format("Failed to substitute asset resource '%s'", assetRefValue));
                 }
             }
         }
@@ -156,7 +189,7 @@ public class AssetReferences {
             See https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url.
         */
 
-        String assetPath = "";
+        String assetPath;
 
         if (isDocumentRelativeURI(assetRefURI)) {
             assetPath = docBaseURI.resolve(assetRefURI).normalize().getPath();

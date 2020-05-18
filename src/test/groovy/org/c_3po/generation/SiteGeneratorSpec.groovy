@@ -72,17 +72,27 @@ class SiteGeneratorSpec extends Specification {
     }
 
     def "is able to fingerprint assets, e.g. to make cache busting possible" () {
-        setup:
+        given: "a site that shall be generated with fingerprinting"
         def shouldFingerprintAssets = true
         def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
-        when:
+        when: "being generated"
         siteGenerator.generate()
 
-        then:
+        then: "fingerprinted versions of all css files are generated"
         Files.exists(destDir.resolve("css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
         Files.exists(destDir.resolve("css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
+
+        and: "fingerprinted versions of all js files are generated"
+        Files.exists(destDir.resolve("js/main.44782b626616c6098994363811a6014c6771c5d5.js"))
+        Files.exists(destDir.resolve("js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js"))
+
+        and: "references to those css files are replaced in HTML files"
+        // TODO: Implement.
+
+        and: "references to those js files are replaced in HTML files"
+        // TODO: Implement.
     }
 
     def "allows to omit fingerprinting assets" () {

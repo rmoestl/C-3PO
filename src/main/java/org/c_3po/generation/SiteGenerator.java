@@ -475,11 +475,13 @@ public class SiteGenerator {
 
     private void fingerprintAssetsIfEnabled() throws IOException {
         if (this.shouldFingerprintAssets) {
-            Path stylesheetDir = destinationDirectoryPath.resolve("css");
 
             var assetSubstitutes = new HashMap<String, String>();
             try {
+                var stylesheetDir = destinationDirectoryPath.resolve("css");
+                var jsDir = destinationDirectoryPath.resolve("js");
                 assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
+                assetSubstitutes.putAll(Fingerprinter.fingerprintJsFiles(jsDir, destinationDirectoryPath));
 
                 // TODO: Fingerprint media files, JS and so on
             } catch (NoSuchAlgorithmException e) {

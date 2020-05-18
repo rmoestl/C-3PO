@@ -10,7 +10,9 @@ import java.nio.file.Paths
 class ReplaceAssetsReferencesInDocSpec extends Specification {
     def assetSubstitutes = [
             '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css',
-            '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css'
+            '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css',
+            '/js/main.js': '/js/main.44782b626616c6098994363811a6014c6771c5d5.js',
+            '/js/jquery.js': '/js/jquery.083f0c5df3398060df50f99d59edf31127720da0.js',
     ]
     def generatorSettings = new Properties()
 
@@ -26,7 +28,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
 
     def "replaces stylesheet references" () {
         given:
-        def doc = createDoc("/css/main.css")
+        def doc = createDocWithStylesheet("/css/main.css")
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
@@ -34,6 +36,18 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
 
         then:
         assertStylesheetRef(doc, "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
+    }
+
+    def "replaces JavaScript references" () {
+        given:
+        def doc = createDocWithJs("/js/main.js")
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        assertJsRef(doc, "/js/main.44782b626616c6098994363811a6014c6771c5d5.js")
     }
 
     @Unroll
@@ -273,7 +287,15 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         assert doc.select("link[rel='stylesheet']").get(linkElemIndex).attr("href") == expectedRef
     }
 
-    def createDoc(String assetRef, String baseHref = null) {
+    void assertJsRef(doc, expectedRef, linkElemIndex = 0) {
+        assert doc.select("script[src]").get(linkElemIndex).attr("src") == expectedRef
+    }
+
+    def createDoc(String assetURI, String baseHref = null) {
+        return createDocWithStylesheet(assetURI, baseHref)
+    }
+
+    def createDocWithStylesheet(String assetURI, String baseHref = null) {
         def baseElem = baseHref ? """<base href="${baseHref}">""" : ""
         return Jsoup.parse("""\
         <!DOCTYPE html>
@@ -282,7 +304,21 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
           <meta charset="UTF-8">
           ${baseElem}
           <title>Foo</title>
-          <link href="${assetRef}" rel="stylesheet">
+          <link href="${assetURI}" rel="stylesheet">
+        </head>
+        <body></body>
+        </html>
+        """)
+    }
+
+    def createDocWithJs(String assetURI) {
+        return Jsoup.parse("""\
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Foo</title>
+          <script src="${assetURI}"></script>
         </head>
         <body></body>
         </html>
