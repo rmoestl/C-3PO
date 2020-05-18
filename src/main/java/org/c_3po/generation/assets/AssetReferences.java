@@ -4,6 +4,7 @@ import org.c_3po.io.FileFilters;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +27,11 @@ public class AssetReferences {
      */
     public static void replaceAssetsReferences(Document doc, URI docURI, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) {
-        replaceStylesheetReferences(doc, docURI, assetSubstitutes, generatorSettings);
-        replaceJSReferences(doc, docURI, assetSubstitutes, generatorSettings);
+        var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
+        var docBaseURI = determineDocBaseURI(docURI, doc);
+
+        replaceStylesheetReferences(doc, websiteBaseURI, docBaseURI, assetSubstitutes);
+        replaceJSReferences(doc, websiteBaseURI, docBaseURI, assetSubstitutes);
     }
 
     // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
@@ -73,60 +77,42 @@ public class AssetReferences {
         }
     }
 
-    private static void replaceStylesheetReferences(Document doc, URI docURI, Map<String, String> stylesheetSubstitutes,
-                                                    Properties generatorSettings) {
+    private static void replaceStylesheetReferences(Document doc, URI websiteBaseURI, URI docBaseURI,
+                                                    Map<String, String> stylesheetSubstitutes) {
         // Note: According to https://html.spec.whatwg.org/#interactions-of-styling-and-scripting,
         // `<link rel="stylesheet">` is the only way to load an external stylesheet.
         var elements = doc.select("link[rel='stylesheet']");
-        for (Element element : elements) {
-            String href = element.attr("href");
-            var stylesheetURI = URI.create(href);
-            var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
-            var docBaseURI = determineDocBaseURI(docURI, doc);
-            if (isAssetControlledByWebsite(stylesheetURI, websiteBaseURI, docBaseURI)) {
-                String assetPath = translateToAssetPath(stylesheetURI, docBaseURI);
-
-                String substitutePath = stylesheetSubstitutes.get(assetPath);
-                if (substitutePath != null) {
-
-                    // Note: Replace the asset's name only and leave the URL untouched otherwise.
-                    String oldAssetFileName = Paths.get(stylesheetURI.getPath()).getFileName().toString();
-                    String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
-
-                    // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
-                    //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                    element.attr("href", href.replace(oldAssetFileName, newAssetFileName));
-                } else {
-                    LOG.warn(String.format("Failed to substitute asset resource '%s'", href));
-                }
-            }
-        }
+        replaceReferences(elements, "href", websiteBaseURI, docBaseURI, stylesheetSubstitutes);
     }
 
-    // TODO: DRY.
-    private static void replaceJSReferences(Document doc, URI docURI, Map<String, String> substitutes,
-                                            Properties generatorSettings) {
+    private static void replaceJSReferences(Document doc, URI websiteBaseURI, URI docBaseURI,
+                                            Map<String, String> stylesheetSubstitutes) {
         // TODO: Is this the only way to load an external JavaScript file?
         // TODO: Could a script tag also load something else than JavaScript?
         var elements = doc.select("script[src]");
+        replaceReferences(elements, "src", websiteBaseURI, docBaseURI, stylesheetSubstitutes);
+    }
+
+    // TODO: Find a better name which could also mean to rename other functions in
+    //  this class. There are a bit too much "replace references" functions in here.
+    private static void replaceReferences(Elements elements, String refAttrName, URI websiteBaseURI, URI docBaseURI,
+                                          Map<String, String> substitutes) {
         for (Element element : elements) {
-            String assetRefValue = element.attr("src");
-            var assetRevValueURI = URI.create(assetRefValue);
-            var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
-            var docBaseURI = determineDocBaseURI(docURI, doc);
-            if (isAssetControlledByWebsite(assetRevValueURI, websiteBaseURI, docBaseURI)) {
-                String assetPath = translateToAssetPath(assetRevValueURI, docBaseURI);
+            String assetRefValue = element.attr(refAttrName);
+            var assetURI = URI.create(assetRefValue);
+            if (isAssetControlledByWebsite(assetURI, websiteBaseURI, docBaseURI)) {
+                String assetPath = translateToAssetPath(assetURI, docBaseURI);
 
                 String substitutePath = substitutes.get(assetPath);
                 if (substitutePath != null) {
 
                     // Note: Replace the asset's name only and leave the URL untouched otherwise.
-                    String oldAssetFileName = Paths.get(assetRevValueURI.getPath()).getFileName().toString();
+                    String oldAssetFileName = Paths.get(assetURI.getPath()).getFileName().toString();
                     String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
 
                     // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
                     //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                    element.attr("src", assetRefValue.replace(oldAssetFileName, newAssetFileName));
+                    element.attr(refAttrName, assetRefValue.replace(oldAssetFileName, newAssetFileName));
                 } else {
                     LOG.warn(String.format("Failed to substitute asset resource '%s'", assetRefValue));
                 }
