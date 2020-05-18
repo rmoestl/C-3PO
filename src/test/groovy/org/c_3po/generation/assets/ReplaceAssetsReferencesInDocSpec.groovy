@@ -25,7 +25,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     // TODO: Is there a difference between docURI being "/about/" and "/about" when it comes to resolve relative paths?
 
     @Unroll
-    def "replaces absolute stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
+    def "replaces absolute asset references of type '#ref'" (String ref, String refPastReplacement) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/a-blog-article.html")
@@ -45,7 +45,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "skips replacing absolute stylesheet refs to non-exiting assets like '#ref'" (String ref) {
+    def "skips replacing absolute asset refs to non-exiting assets like '#ref'" (String ref) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/a-blog-article.html")
@@ -63,7 +63,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "replaces protocol-relative stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
+    def "replaces protocol-relative asset references of type '#ref'" (String ref, String refPastReplacement) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/a-blog-article.html")
@@ -83,7 +83,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "skips replacing protocol-relative stylesheet refs to non-exiting assets like '#ref'" (String ref) {
+    def "skips replacing protocol-relative asset refs to non-exiting assets like '#ref'" (String ref) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/a-blog-article.html")
@@ -101,7 +101,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "replaces root-relative stylesheet references of type '#ref'" (String ref, String refPastReplacement) {
+    def "replaces root-relative asset references of type '#ref'" (String ref, String refPastReplacement) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/a-blog-article.html")
@@ -121,7 +121,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "skips replacing root-relative stylesheet refs to non-exiting assets like '#ref'" (String ref) {
+    def "skips replacing root-relative asset refs to non-exiting assets like '#ref'" (String ref) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/a-blog-article.html")
@@ -226,7 +226,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
     }
 
     @Unroll
-    def "skips replacing external stylesheet references of type '#ref'" (String ref) {
+    def "skips replacing external asset references of type '#ref'" (String ref) {
         given:
         def doc = createDoc(ref)
         def docURI = URI.create("/blog/2020/03/04/fine-blog-article.html")
