@@ -25,7 +25,7 @@ class FingerprinterSpec extends Specification {
         cleanupFingerprintedFiles(cssDir)
     }
 
-    def "fingerprints a all css files within a given dir and its sub-dirs" () {
+    def "fingerprints all css files within a given dir and its sub-dirs" () {
         when: "fingerprinting stylesheets is applied to a given dir"
         def substitutes = Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
@@ -46,7 +46,7 @@ class FingerprinterSpec extends Specification {
                 "/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"
     }
 
-    def "does not fingerprint an already fingerprinted css file again" () {
+    def "does not fingerprint an already fingerprinted asset file again" () {
         given: "fingerprinting is executed once"
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
