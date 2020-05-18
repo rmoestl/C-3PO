@@ -1,17 +1,14 @@
 package org.c_3po.generation
 
 import org.c_3po.cmd.CmdArguments
-import org.c_3po.io.Directories
-import org.jsoup.Jsoup
 import spock.lang.Shared
 import spock.lang.Specification
 
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
 
-import static org.c_3po.generation.SiteGenerationHelpers.generateSite
+import static org.c_3po.generation.assets.AssetReferencesHelpers.assertRefsReplacedIn
 
 /**
  * Integration tests for site generation.
@@ -88,11 +85,10 @@ class SiteGeneratorSpec extends Specification {
         Files.exists(destDir.resolve("js/main.44782b626616c6098994363811a6014c6771c5d5.js"))
         Files.exists(destDir.resolve("js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js"))
 
-        and: "references to those css files are replaced in HTML files"
-        // TODO: Implement.
-
-        and: "references to those js files are replaced in HTML files"
-        // TODO: Implement.
+        and: "references to those css and js files are replaced in HTML files"
+        assertRefsReplacedIn(destDir.resolve("blog.html"))
+        assertRefsReplacedIn(destDir.resolve("about.html"))
+        assertRefsReplacedIn(destDir.resolve("blog/first-blog-post.html"))
     }
 
     def "allows to omit fingerprinting assets" () {
