@@ -20,6 +20,16 @@ public class Fingerprinter {
 
     public static Map<String, String> fingerprintStylesheets(Path dir, Path rootDestDir)
             throws IOException, NoSuchAlgorithmException {
+        return fingerprintAssets(dir, rootDestDir, "css");
+    }
+
+    public static Map<String, String> fingerprintJsFiles(Path dir, Path rootDestDir)
+            throws IOException, NoSuchAlgorithmException {
+        return fingerprintAssets(dir, rootDestDir, "js");
+    }
+
+    private static Map<String, String> fingerprintAssets(Path dir, Path rootDestDir, String fileExt)
+            throws IOException, NoSuchAlgorithmException {
         var substitutes = new HashMap<String, String>();
 
         // If no valid directory, return empty map
@@ -27,31 +37,30 @@ public class Fingerprinter {
             return substitutes;
         }
 
-        DirectoryStream.Filter<Path> cssFilter =
+        DirectoryStream.Filter<Path> assetFileFilter =
                 entry -> {
                     String fileName = entry.toFile().getName();
                     return Files.isRegularFile(entry)
-                            && fileName.endsWith(".css")
-                            && !fileName.matches("^.*\\.[0123456789abcdef]{40}\\.css$");
+                            && fileName.endsWith("." + fileExt)
+                            && !fileName.matches("^.*\\.[0123456789abcdef]{40}\\." + fileExt + "$");
                 };
 
-        try (DirectoryStream<Path> cssFiles = Files.newDirectoryStream(dir, cssFilter)) {
-            for (Path cssFile : cssFiles) {
-                LOG.info(String.format("Fingerprinting stylesheet file '%s'", cssFile));
+        try (DirectoryStream<Path> assetFiles = Files.newDirectoryStream(dir, assetFileFilter)) {
+            for (Path assetFile : assetFiles) {
+                LOG.info(String.format("Fingerprinting asset file '%s'", assetFile));
 
                 // Compute hash
-                String sha1 = encodeHexString(computeSha1Hash(cssFile));
+                String sha1 = encodeHexString(computeSha1Hash(assetFile));
 
                 // Create file
-                String fileName = cssFile.getFileName().toString();
-                String fingerprintedFileName = fileName.replaceFirst(".css$", "." + sha1 + ".css");
+                String fileName = assetFile.getFileName().toString();
+                String fingerprintedFileName = fileName.replaceFirst("." + fileExt + "$", "." + sha1 + "." + fileExt);
                 Path fingerprintedFile = dir.resolve(fingerprintedFileName);
                 if (!Files.exists(fingerprintedFile)) {
-                    Files.copy(cssFile, fingerprintedFile);
+                    Files.copy(assetFile, fingerprintedFile);
                 }
 
                 // Add substitution
-                // TODO: See if that works for subfolders in /css as well
                 Path dirAsUrlPath = rootDestDir.toAbsolutePath().relativize(dir.toAbsolutePath());
 
                 // Note: Leading slash makes it comparable to "implicit schema and domain absolute URLs"
@@ -66,7 +75,7 @@ public class Fingerprinter {
         // Recurse into sub directories
         try (DirectoryStream<Path> subDirs = FileFilters.subDirStream(dir)) {
             for (Path subDir : subDirs) {
-                substitutes.putAll(fingerprintStylesheets(subDir, rootDestDir));
+                substitutes.putAll(fingerprintAssets(subDir, rootDestDir, fileExt));
             }
         }
 
