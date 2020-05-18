@@ -33,7 +33,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        assertStylesheetRef(doc, "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
     }
 
     @Unroll
@@ -46,7 +46,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+        assertStylesheetRef(doc, refPastReplacement)
 
         where:
         ref | refPastReplacement
@@ -66,7 +66,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+        assertStylesheetRef(doc, ref)
 
         where:
         ref | _
@@ -84,7 +84,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+        assertStylesheetRef(doc, refPastReplacement)
 
         where:
         ref | refPastReplacement
@@ -104,7 +104,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+        assertStylesheetRef(doc, ref)
 
         where:
         ref | _
@@ -122,7 +122,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+        assertStylesheetRef(doc, refPastReplacement)
 
         where:
         ref | refPastReplacement
@@ -142,7 +142,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+        assertStylesheetRef(doc, ref)
 
         where:
         ref | _
@@ -160,7 +160,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+        assertStylesheetRef(doc, refPastReplacement)
 
         where:
         ref | docURI | refPastReplacement
@@ -184,7 +184,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == refPastReplacement
+        assertStylesheetRef(doc, refPastReplacement)
 
         where:
         baseHref | ref | refPastReplacement
@@ -216,7 +216,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+        assertStylesheetRef(doc, ref)
 
         where:
         docURI | ref
@@ -234,7 +234,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+        assertStylesheetRef(doc, ref)
     }
 
     @Unroll
@@ -247,7 +247,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        doc.select("link[rel='stylesheet']").get(0).attr("href") == ref
+        assertStylesheetRef(doc, ref)
 
         where:
         // Note: the '_' is the way single column tables can be written
@@ -266,8 +266,11 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then: "this outdated fingerprinted asset ref is replaced by the new fingerprinted ref"
-        doc.select("link[rel='stylesheet']").get(0).attr("href") ==
-                "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        assertStylesheetRef(doc, "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
+    }
+
+    void assertStylesheetRef(doc, expectedRef, linkElemIndex = 0) {
+        assert doc.select("link[rel='stylesheet']").get(linkElemIndex).attr("href") == expectedRef
     }
 
     def createDoc(String assetRef, String baseHref = null) {
