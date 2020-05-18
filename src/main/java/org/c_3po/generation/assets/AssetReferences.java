@@ -36,8 +36,8 @@ public class AssetReferences {
 
     // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
     //  and so on. This will allow to be more efficient by knowing which substitutes are relevant
-    //  for which type of reference.
-
+    //  for which type of reference. However, see if this complication of the code is really worth it
+    //  since reading the map should be rather fast.
     /**
      * Replaces asset references in all HTML files found in supplied dir and sub dirs.
      */
@@ -56,7 +56,6 @@ public class AssetReferences {
     private static void replaceAssetsReferences(Path dir, Path rootDir, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) throws IOException {
         // Replace references
-        // TODO: Replace all refs in all docs in one pass
         try (var htmlFiles = Files.newDirectoryStream(dir, FileFilters.htmlFilter)) {
             for (Path htmlFile : htmlFiles) {
                 Document doc = Jsoup.parse(htmlFile.toFile(), "UTF-8");

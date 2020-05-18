@@ -482,8 +482,6 @@ public class SiteGenerator {
                 var jsDir = destinationDirectoryPath.resolve("js");
                 assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
                 assetSubstitutes.putAll(Fingerprinter.fingerprintJsFiles(jsDir, destinationDirectoryPath));
-
-                // TODO: Fingerprint media files, JS and so on
             } catch (NoSuchAlgorithmException e) {
                 LOG.warn("Failed to fingerprint assets. Beware that your cache busting may not work.");
             }

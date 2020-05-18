@@ -24,8 +24,6 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         generatorSettings.load(Files.newInputStream(srcDir.resolve(".c3posettings")))
     }
 
-    // TODO: Is there a difference between docURI being "/about/" and "/about" when it comes to resolve relative paths?
-
     def "replaces stylesheet references" () {
         given:
         def doc = createDocWithStylesheet("/css/main.css")
