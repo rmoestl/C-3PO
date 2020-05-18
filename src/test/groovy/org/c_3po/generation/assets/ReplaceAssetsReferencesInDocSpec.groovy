@@ -24,6 +24,18 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
 
     // TODO: Is there a difference between docURI being "/about/" and "/about" when it comes to resolve relative paths?
 
+    def "replaces stylesheet references" () {
+        given:
+        def doc = createDoc("/css/main.css")
+        def docURI = URI.create("/blog/a-blog-article.html")
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        doc.select("link[rel='stylesheet']").get(0).attr("href") == "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+    }
+
     @Unroll
     def "replaces absolute asset references of type '#ref'" (String ref, String refPastReplacement) {
         given:
