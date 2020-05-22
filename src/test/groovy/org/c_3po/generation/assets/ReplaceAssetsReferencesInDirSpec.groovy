@@ -19,7 +19,8 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
             '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css',
             '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css',
             '/js/main.js': '/js/main.44782b626616c6098994363811a6014c6771c5d5.js',
-            '/js/vendor/jquery.js': '/js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js'
+            '/js/vendor/jquery.js': '/js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js',
+            '/img/logo.svg': '/img/logo.dd6c240331f12aa6489f3757b023b1b7866a17cc.svg'
     ]
     def generatorSettings = new Properties()
     def destDirClone = Files.createTempDirectory("c-3po_dest-dir-for-specs_")
@@ -38,7 +39,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
         generatorSettings.load(Files.newInputStream(srcDir.resolve(".c3posettings")))
     }
 
-    def "replaces stylesheet references" () {
+    def "replaces asset references in HTML within a given directory" () {
         when:
         AssetReferences.replaceAssetsReferences(destDirClone, assetSubstitutes, generatorSettings)
 

@@ -32,6 +32,7 @@ public class AssetReferences {
 
         replaceStylesheetReferences(doc, websiteBaseURI, docBaseURI, assetSubstitutes);
         replaceJSReferences(doc, websiteBaseURI, docBaseURI, assetSubstitutes);
+        replaceImageReferences(doc, websiteBaseURI, docBaseURI, assetSubstitutes);
     }
 
     // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
@@ -85,11 +86,18 @@ public class AssetReferences {
     }
 
     private static void replaceJSReferences(Document doc, URI websiteBaseURI, URI docBaseURI,
-                                            Map<String, String> stylesheetSubstitutes) {
+                                            Map<String, String> substitutes) {
         // TODO: Is this the only way to load an external JavaScript file?
         // TODO: Could a script tag also load something else than JavaScript?
         var elements = doc.select("script[src]");
-        replaceReferences(elements, "src", websiteBaseURI, docBaseURI, stylesheetSubstitutes);
+        replaceReferences(elements, "src", websiteBaseURI, docBaseURI, substitutes);
+    }
+
+    private static void replaceImageReferences(Document doc, URI websiteBaseURI, URI docBaseURI,
+                                               Map<String, String> substitutes) {
+        // TODO: Consider all different ways to load an image (i.e. responsive images).
+        var elements = doc.select("img[src]");
+        replaceReferences(elements, "src", websiteBaseURI, docBaseURI, substitutes);
     }
 
     // TODO: Find a better name which could also mean to rename other functions in

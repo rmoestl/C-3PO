@@ -480,8 +480,10 @@ public class SiteGenerator {
             try {
                 var stylesheetDir = destinationDirectoryPath.resolve("css");
                 var jsDir = destinationDirectoryPath.resolve("js");
+                var imgDir = destinationDirectoryPath.resolve("img");
                 assetSubstitutes.putAll(Fingerprinter.fingerprintStylesheets(stylesheetDir, destinationDirectoryPath));
                 assetSubstitutes.putAll(Fingerprinter.fingerprintJsFiles(jsDir, destinationDirectoryPath));
+                assetSubstitutes.putAll(Fingerprinter.fingerprintImageFiles(imgDir, destinationDirectoryPath));
             } catch (NoSuchAlgorithmException e) {
                 LOG.warn("Failed to fingerprint assets. Beware that your cache busting may not work.");
             }

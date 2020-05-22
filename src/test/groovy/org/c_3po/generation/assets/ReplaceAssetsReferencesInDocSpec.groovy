@@ -13,6 +13,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
             '/css/vendor/normalize.css': '/css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css',
             '/js/main.js': '/js/main.44782b626616c6098994363811a6014c6771c5d5.js',
             '/js/jquery.js': '/js/jquery.083f0c5df3398060df50f99d59edf31127720da0.js',
+            '/img/picture.jpg': '/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg',
     ]
     def generatorSettings = new Properties()
 
@@ -38,14 +39,48 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
 
     def "replaces JavaScript references" () {
         given:
-        def doc = createDocWithJs("/js/main.js")
+        def assetURI = "/js/main.js"
         def docURI = URI.create("/blog/a-blog-article.html")
+        def doc = Jsoup.parse("""\
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <title>Foo</title>
+              <script src="${assetURI}"></script>
+            </head>
+            <body></body>
+            </html>
+            """)
 
         when:
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        assertJsRef(doc, "/js/main.44782b626616c6098994363811a6014c6771c5d5.js")
+        assert doc.select("script[src]").get(0).attr("src") == "/js/main.44782b626616c6098994363811a6014c6771c5d5.js"
+    }
+
+    def "replaces image references of sort <img src=\"...\">" () {
+        given:
+        def assetURI = "/img/picture.jpg"
+        def docURI = URI.create("/blog/a-blog-article.html")
+        def doc = Jsoup.parse("""\
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <title>Foo</title>
+              <img src="${assetURI}">
+            </head>
+            <body></body>
+            </html>
+            """)
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+
+        then:
+        assert doc.select("img[src]").get(0).attr("src") == "/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
     }
 
     @Unroll
@@ -285,10 +320,6 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         assert doc.select("link[rel='stylesheet']").get(linkElemIndex).attr("href") == expectedRef
     }
 
-    void assertJsRef(doc, expectedRef, linkElemIndex = 0) {
-        assert doc.select("script[src]").get(linkElemIndex).attr("src") == expectedRef
-    }
-
     def createDoc(String assetURI, String baseHref = null) {
         return createDocWithStylesheet(assetURI, baseHref)
     }
@@ -303,20 +334,6 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
           ${baseElem}
           <title>Foo</title>
           <link href="${assetURI}" rel="stylesheet">
-        </head>
-        <body></body>
-        </html>
-        """)
-    }
-
-    def createDocWithJs(String assetURI) {
-        return Jsoup.parse("""\
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <title>Foo</title>
-          <script src="${assetURI}"></script>
         </head>
         <body></body>
         </html>

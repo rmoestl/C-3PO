@@ -15,6 +15,9 @@ class AssetReferencesHelpers {
         def jsElems = queryJsElems(htmlFilePath)
         assert jsElems.get(0).attr("src") == '/js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js'
         assert jsElems.get(1).attr("src") == '/js/main.44782b626616c6098994363811a6014c6771c5d5.js'
+
+        def imgElems = queryImgElems(htmlFilePath)
+        assert imgElems.get(0).attr("src") == '/img/logo.dd6c240331f12aa6489f3757b023b1b7866a17cc.svg'
     }
 
     static Elements queryStylesheetElems(htmlFilePath) {
@@ -25,5 +28,10 @@ class AssetReferencesHelpers {
     static Elements queryJsElems(htmlFilePath) {
         def doc = Jsoup.parse(htmlFilePath.toFile(), "UTF-8")
         return doc.select("script[src]")
+    }
+
+    static Elements queryImgElems(htmlFilePath) {
+        def doc = Jsoup.parse(htmlFilePath.toFile(), "UTF-8")
+        return doc.select("img[src]")
     }
 }
