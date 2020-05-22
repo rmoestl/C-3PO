@@ -1,5 +1,6 @@
 package org.c_3po.generation.assets
 
+import org.c_3po.io.Directories
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -100,6 +101,52 @@ class FingerprinterSpec extends Specification {
                 "/img/optimized-picture.bf2b5a37c6d4f8e440d3b263b950a452581d0beb.webp"
     }
 
+    def "ignores case of file name extensions when fingerprinting assets" () {
+        given: "a dest dir clone, in which files can be added without the need to delete " +
+                "those files prior other specs in this suite"
+        def destDirClone = Files.createTempDirectory("c-3po_dest-dir-for-specs_")
+        Directories.copyDir(destDir, destDirClone)
+
+        and: "asset with varying file extension capitalization"
+        def cssDirClone = destDirClone.resolve("css")
+        def jsDirClone = destDirClone.resolve("js")
+        def imgDirClone = destDirClone.resolve("img")
+
+        assert Files.exists(cssDirClone.resolve("main.css"))
+        Files.copy(cssDirClone.resolve("main.css"), cssDirClone.resolve("main1.CSS"))
+        Files.copy(cssDirClone.resolve("main.css"), cssDirClone.resolve("main2.cSS"))
+
+        assert Files.exists(jsDirClone.resolve("main.js"))
+        Files.copy(jsDirClone.resolve("main.js"), jsDirClone.resolve("main1.JS"))
+        Files.copy(jsDirClone.resolve("main.js"), jsDirClone.resolve("main2.jS"))
+
+        assert Files.exists(imgDirClone.resolve("picture.jpg"))
+        Files.copy(imgDirClone.resolve("picture.jpg"), imgDirClone.resolve("picture1.JPG"))
+        Files.copy(imgDirClone.resolve("picture.jpg"), imgDirClone.resolve("picture2.jPg"))
+
+        when: "fingerprinting the assets"
+        Fingerprinter.fingerprintStylesheets(cssDirClone, destDirClone)
+        Fingerprinter.fingerprintJsFiles(jsDirClone, destDirClone)
+        Fingerprinter.fingerprintImageFiles(imgDirClone, destDirClone)
+
+        then: "fingerprinted versions of all those assets with varying file extension capitalization are created"
+        filesExist(cssDirClone,
+                "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css",
+                "main1.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.CSS",
+                "main2.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.cSS")
+        filesExist(jsDirClone,
+                "main.44782b626616c6098994363811a6014c6771c5d5.js",
+                "main1.44782b626616c6098994363811a6014c6771c5d5.JS",
+                "main2.44782b626616c6098994363811a6014c6771c5d5.jS")
+        filesExist(imgDirClone,
+                "picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg",
+                "picture1.e53496215f3b967267859fd2b108e29dbffc555c.JPG",
+                "picture2.e53496215f3b967267859fd2b108e29dbffc555c.jPg")
+
+        cleanup:
+        destDirClone.toFile().deleteDir()
+    }
+
     // TODO: Description on asset level doesn't fit the test contents that's based on CSS.
     //  It's yet unclear how the final API will look. At time of writing
     //  .fingerprintStylesheets was just a wrapper of the private .fingerprintAssets
@@ -142,5 +189,9 @@ class FingerprinterSpec extends Specification {
 
         and: "the old fingerprinted version gets deleted"
         Files.notExists(cssDir.resolve(oldFilename))
+    }
+
+    def filesExist(dir, String... fileNames) {
+        fileNames.each { fileName -> assert Files.exists(dir.resolve(fileName)) }
     }
 }

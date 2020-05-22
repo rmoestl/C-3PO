@@ -38,6 +38,9 @@ public class Fingerprinter {
             throws IOException, NoSuchAlgorithmException {
         final var extensionsRegex = "\\.(" + String.join("|", fileExtensions) + ")$";
         final var fingerprintedFileRegex = "\\.[0123456789abcdef]{40}" + extensionsRegex;
+
+        // Note: Using Matcher methods throughout method cause String equivalents
+        // rely on a more brittle and less clear way to set flags such as ignoring case.
         final var filePattern = Pattern.compile(extensionsRegex, Pattern.CASE_INSENSITIVE);
         final var fingerprintedFilePattern = Pattern.compile(fingerprintedFileRegex, Pattern.CASE_INSENSITIVE);
         final var substitutes = new HashMap<String, String>();
@@ -60,13 +63,13 @@ public class Fingerprinter {
                 LOG.info(String.format("Fingerprinting asset file '%s'", assetFile));
 
                 // Compute hash
-                String sha1 = encodeHexString(computeSha1Hash(assetFile));
+                var sha1 = encodeHexString(computeSha1Hash(assetFile));
 
                 // Create file
-                String fileName = assetFile.getFileName().toString();
-                String fileNameExt = fileName.substring(fileName.lastIndexOf(".") + 1);
-                String fingerprintedFileName = fileName.replaceFirst(extensionsRegex, "." + sha1 + "." + fileNameExt);
-                Path fingerprintedFile = dir.resolve(fingerprintedFileName);
+                var fileName = assetFile.getFileName().toString();
+                var fileNameExt = fileName.substring(fileName.lastIndexOf(".") + 1);
+                var fingerprintedFileName = filePattern.matcher(fileName).replaceFirst("." + sha1 + "." + fileNameExt);
+                var fingerprintedFile = dir.resolve(fingerprintedFileName);
                 if (!Files.exists(fingerprintedFile)) {
                     Files.copy(assetFile, fingerprintedFile);
                 }
