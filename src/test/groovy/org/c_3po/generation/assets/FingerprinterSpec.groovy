@@ -16,6 +16,7 @@ class FingerprinterSpec extends Specification {
     @Shared destDir = Paths.get("src/test/resources/test-project-build")
     @Shared cssDir = destDir.resolve("css")
     @Shared jsDir = destDir.resolve("js")
+    @Shared imgDir = destDir.resolve("img")
 
     def setupSpec() {
         ensureDestinationDirIsClean(destDir)
@@ -66,6 +67,37 @@ class FingerprinterSpec extends Specification {
         substitutes.get("/js/main.js") == "/js/main.44782b626616c6098994363811a6014c6771c5d5.js"
         substitutes.get("/js/vendor/jquery.js") ==
                 "/js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js"
+    }
+
+    def "fingerprints all images (jpg, png, gif, svg, webp) within a given dir and its sub-dirs" () {
+        when: "fingerprinting images is applied to a given dir"
+        def substitutes = Fingerprinter.fingerprintImageFiles(imgDir, destDir)
+
+        then: "fingerprinted versions of all found images are created"
+        Files.exists(imgDir.resolve("picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"))
+        Files.exists(imgDir.resolve("artwork/graphic.d2213fbc994febae5ffd5306b18870bb72ba0bfb.png"))
+        Files.exists(imgDir.resolve("fun/cat.716d7ad2ae0a5dce264a9e7b5a7592047b1f0552.gif"))
+        Files.exists(imgDir.resolve("logo.dd6c240331f12aa6489f3757b023b1b7866a17cc.svg"))
+        Files.exists(imgDir.resolve("optimized-picture.bf2b5a37c6d4f8e440d3b263b950a452581d0beb.webp"))
+
+        and: "their original counterparts are not deleted"
+        Files.exists(imgDir.resolve("picture.jpg"))
+        Files.exists(imgDir.resolve("artwork/graphic.png"))
+        Files.exists(imgDir.resolve("fun/cat.gif"))
+        Files.exists(imgDir.resolve("logo.svg"))
+        Files.exists(imgDir.resolve("optimized-picture.webp"))
+
+        and: "the substitutes map has the same length as the number of found images"
+        substitutes.size() == 5
+
+        and: "the substitutes map maps each image to its fingerprinted counterpart"
+        substitutes.get("/img/picture.jpg") == "/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
+        substitutes.get("/img/artwork/graphic.png") ==
+                "/img/artwork/graphic.d2213fbc994febae5ffd5306b18870bb72ba0bfb.png"
+        substitutes.get("/img/fun/cat.gif") == "/img/fun/cat.716d7ad2ae0a5dce264a9e7b5a7592047b1f0552.gif"
+        substitutes.get("/img/logo.svg") == "/img/logo.dd6c240331f12aa6489f3757b023b1b7866a17cc.svg"
+        substitutes.get("/img/optimized-picture.webp") ==
+                "/img/optimized-picture.bf2b5a37c6d4f8e440d3b263b950a452581d0beb.webp"
     }
 
     // TODO: Description on asset level doesn't fit the test contents that's based on CSS.

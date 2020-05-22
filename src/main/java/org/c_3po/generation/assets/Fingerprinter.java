@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static org.c_3po.util.ChecksumCalculator.computeSha1Hash;
 import static org.c_3po.util.ChecksumCalculator.encodeHexString;
@@ -28,9 +29,18 @@ public class Fingerprinter {
         return fingerprintAssets(dir, rootDestDir, "js");
     }
 
-    private static Map<String, String> fingerprintAssets(Path dir, Path rootDestDir, String fileExt)
+    public static Map<String, String> fingerprintImageFiles(Path dir, Path rootDestDir)
             throws IOException, NoSuchAlgorithmException {
-        var substitutes = new HashMap<String, String>();
+        return fingerprintAssets(dir, rootDestDir, "png", "jpg", "jpeg", "svg", "gif", "webp");
+    }
+
+    private static Map<String, String> fingerprintAssets(Path dir, Path rootDestDir, String... fileExtensions)
+            throws IOException, NoSuchAlgorithmException {
+        final var extensionsRegex = "\\.(" + String.join("|", fileExtensions) + ")$";
+        final var fingerprintedFileRegex = "\\.[0123456789abcdef]{40}" + extensionsRegex;
+        final var filePattern = Pattern.compile(extensionsRegex, Pattern.CASE_INSENSITIVE);
+        final var fingerprintedFilePattern = Pattern.compile(fingerprintedFileRegex, Pattern.CASE_INSENSITIVE);
+        final var substitutes = new HashMap<String, String>();
 
         // If no valid directory, return empty map
         if (!Files.isDirectory(dir)) {
@@ -41,8 +51,8 @@ public class Fingerprinter {
                 entry -> {
                     String fileName = entry.toFile().getName();
                     return Files.isRegularFile(entry)
-                            && fileName.endsWith("." + fileExt)
-                            && !fileName.matches("^.*\\.[0123456789abcdef]{40}\\." + fileExt + "$");
+                            && filePattern.matcher(fileName).find()
+                            && !fingerprintedFilePattern.matcher(fileName).find();
                 };
 
         try (DirectoryStream<Path> assetFiles = Files.newDirectoryStream(dir, assetFileFilter)) {
@@ -54,7 +64,8 @@ public class Fingerprinter {
 
                 // Create file
                 String fileName = assetFile.getFileName().toString();
-                String fingerprintedFileName = fileName.replaceFirst("." + fileExt + "$", "." + sha1 + "." + fileExt);
+                String fileNameExt = fileName.substring(fileName.lastIndexOf(".") + 1);
+                String fingerprintedFileName = fileName.replaceFirst(extensionsRegex, "." + sha1 + "." + fileNameExt);
                 Path fingerprintedFile = dir.resolve(fingerprintedFileName);
                 if (!Files.exists(fingerprintedFile)) {
                     Files.copy(assetFile, fingerprintedFile);
@@ -75,7 +86,7 @@ public class Fingerprinter {
         // Recurse into sub directories
         try (DirectoryStream<Path> subDirs = FileFilters.subDirStream(dir)) {
             for (Path subDir : subDirs) {
-                substitutes.putAll(fingerprintAssets(subDir, rootDestDir, fileExt));
+                substitutes.putAll(fingerprintAssets(subDir, rootDestDir, fileExtensions));
             }
         }
 
