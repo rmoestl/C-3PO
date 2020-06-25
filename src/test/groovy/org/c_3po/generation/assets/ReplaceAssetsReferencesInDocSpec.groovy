@@ -57,7 +57,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        assert doc.select("script[src]").get(0).attr("src") == "/js/main.44782b626616c6098994363811a6014c6771c5d5.js"
+        doc.select("script[src]").get(0).attr("src") == "/js/main.44782b626616c6098994363811a6014c6771c5d5.js"
     }
 
     def "replaces image references of sort <img src=\"...\">" () {
@@ -80,7 +80,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
-        assert doc.select("img[src]").get(0).attr("src") == "/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
+        doc.select("img[src]").get(0).attr("src") == "/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
     }
 
     @Unroll
