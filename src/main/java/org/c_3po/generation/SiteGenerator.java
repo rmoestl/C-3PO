@@ -491,7 +491,7 @@ public class SiteGenerator {
 
             // Replace references
             LOG.info(assetSubstitutes.toString());
-            AssetReferences.replaceAssetsReferences(destinationDirectoryPath, assetSubstitutes, settings);
+            AssetReferences.replaceAssetsReferencesInDir(destinationDirectoryPath, assetSubstitutes, settings);
         }
     }
 

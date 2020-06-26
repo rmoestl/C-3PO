@@ -41,7 +41,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
 
     def "replaces asset references in HTML within a given directory" () {
         when:
-        AssetReferences.replaceAssetsReferences(destDirClone, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, generatorSettings)
 
         then:
         assertRefsReplacedIn("blog.html")
@@ -50,7 +50,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
 
     def "replaces asset references in HTML files located in sub directories" () {
         when:
-        AssetReferences.replaceAssetsReferences(destDirClone, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, generatorSettings)
 
         then:
         assertRefsReplacedIn("blog/first-blog-post.html")
@@ -63,7 +63,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
         assertAssetsWithRelativeURIIn("blog/first-blog-post.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(destDirClone, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, generatorSettings)
 
         then:
         assertRefsReplacedIn("blog.html")

@@ -25,8 +25,8 @@ public class AssetReferences {
     /**
      * Replaces asset references in the supplied {@link Jsoup} document.
      */
-    public static void replaceAssetsReferences(Document doc, URI docURI, Map<String, String> assetSubstitutes,
-                                               Properties generatorSettings) {
+    public static void replaceAssetsReferencesInDoc(Document doc, URI docURI, Map<String, String> assetSubstitutes,
+                                                    Properties generatorSettings) {
         var websiteBaseURI = URI.create(generatorSettings.getProperty("baseUrl"));
         var docBaseURI = determineDocBaseURI(docURI, doc);
 
@@ -38,25 +38,30 @@ public class AssetReferences {
     /**
      * Replaces asset references in all HTML files found in supplied dir and sub dirs.
      */
-    public static void replaceAssetsReferences(Path dir, Map<String, String> assetSubstitutes,
-                                               Properties generatorSettings) throws IOException {
+    public static void replaceAssetsReferencesInDir(Path dir, Map<String, String> assetSubstitutes,
+                                                    Properties generatorSettings) throws IOException {
 
         // Note: Right now, param assetSubstitutes holds asset refs of any kind.
         // If there's ever the need to speed things up, grouping assetSubstitutes
         // by asset type (i.e. image, js, css, etc.) could be an option.
         // But at the moment it's YAGNI.
-        replaceAssetsReferences(dir, dir, assetSubstitutes, generatorSettings);
+        replaceAssetsReferencesInDirImpl(dir, dir, assetSubstitutes, generatorSettings);
     }
 
     /**
      * Implementation method for replacing asset references.
+     *
+     * The implementation method is necessary to not complicate the public API, which
+     * shouldn't be required to supply the rootDir param (hint: rootDir needs be
+     * dragged on through recursive executions.
+     *
      * @param dir dir containing HTML files to process
      * @param rootDir root directory of the site needed to calculate
      *                the path of HTML files in order to properly resolve
      *                relative asset refs
      */
-    private static void replaceAssetsReferences(Path dir, Path rootDir, Map<String, String> assetSubstitutes,
-                                               Properties generatorSettings) throws IOException {
+    private static void replaceAssetsReferencesInDirImpl(Path dir, Path rootDir, Map<String, String> assetSubstitutes,
+                                                         Properties generatorSettings) throws IOException {
         // Replace references
         try (var htmlFiles = Files.newDirectoryStream(dir, FileFilters.htmlFilter)) {
             for (Path htmlFile : htmlFiles) {
@@ -64,7 +69,7 @@ public class AssetReferences {
                 URI docURI = URI.create(rootDir.relativize(dir).resolve(htmlFile.getFileName()).toString());
 
                 LOG.debug(String.format("Replacing asset references in '%s'", htmlFile));
-                replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings);
+                replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings);
 
                 Files.write(htmlFile, doc.outerHtml().getBytes());
             }
@@ -73,7 +78,7 @@ public class AssetReferences {
         // Replace refs in sub directories
         try (var subDirs = FileFilters.subDirStream(dir)) {
             for (var subDir : subDirs) {
-                replaceAssetsReferences(subDir, rootDir, assetSubstitutes, generatorSettings);
+                replaceAssetsReferencesInDirImpl(subDir, rootDir, assetSubstitutes, generatorSettings);
             }
         }
     }
@@ -122,8 +127,6 @@ public class AssetReferences {
         }
     }
 
-    // TODO: Find a better name which could also mean to rename other functions in
-    //  this class. There are a bit too much "replace references" functions in here.
     private static void replaceReferences(Elements elements, String refAttrName, URI websiteBaseURI, URI docBaseURI,
                                           Map<String, String> substitutes) {
         for (Element element : elements) {
@@ -132,7 +135,6 @@ public class AssetReferences {
         }
     }
 
-    // TODO: Think about renaming, e.g. to `mapReference`.
     private static String replaceReference(String assetRefValue, URI websiteBaseURI, URI docBaseURI,
                                            Map<String, String> substitutes) {
         var assetURI = URI.create(assetRefValue);

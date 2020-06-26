@@ -31,7 +31,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
@@ -54,7 +54,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
             """)
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         doc.select("script[src]").get(0).attr("src") == "/js/main.44782b626616c6098994363811a6014c6771c5d5.js"
@@ -77,7 +77,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
             """)
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         doc.select("img[src]").get(0).attr("src") == "/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
@@ -105,7 +105,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
             """)
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, substitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, substitutes, generatorSettings)
 
         then:
         doc.select("img").get(0).attr("src") == "/img/picture_1470x.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
@@ -122,7 +122,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, refPastReplacement)
@@ -142,7 +142,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, ref)
@@ -160,7 +160,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, refPastReplacement)
@@ -180,7 +180,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, ref)
@@ -198,7 +198,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, refPastReplacement)
@@ -218,7 +218,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, ref)
@@ -236,7 +236,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def doc = createDoc(ref)
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, refPastReplacement)
@@ -260,7 +260,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, refPastReplacement)
@@ -292,7 +292,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def doc = createDoc(ref)
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, URI.create(docURI), assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, ref)
@@ -310,7 +310,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/a-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, ref)
@@ -323,7 +323,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/blog/2020/03/04/fine-blog-article.html")
 
         when:
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then:
         assertStylesheetRef(doc, ref)
@@ -342,7 +342,7 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         def docURI = URI.create("/about.html")
 
         when: "replacing references"
-        AssetReferences.replaceAssetsReferences(doc, docURI, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, assetSubstitutes, generatorSettings)
 
         then: "this outdated fingerprinted asset ref is replaced by the new fingerprinted ref"
         assertStylesheetRef(doc, "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
