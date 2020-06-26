@@ -35,15 +35,16 @@ public class AssetReferences {
         replaceImageReferences(doc, websiteBaseURI, docBaseURI, assetSubstitutes);
     }
 
-    // TODO: Instead of assetSubstitutes pass an object holding keys for stylesheet substitutes, image substitutes
-    //  and so on. This will allow to be more efficient by knowing which substitutes are relevant
-    //  for which type of reference. However, see if this complication of the code is really worth it
-    //  since reading the map should be rather fast.
     /**
      * Replaces asset references in all HTML files found in supplied dir and sub dirs.
      */
     public static void replaceAssetsReferences(Path dir, Map<String, String> assetSubstitutes,
                                                Properties generatorSettings) throws IOException {
+
+        // Note: Right now, param assetSubstitutes holds asset refs of any kind.
+        // If there's ever the need to speed things up, grouping assetSubstitutes
+        // by asset type (i.e. image, js, css, etc.) could be an option.
+        // But at the moment it's YAGNI.
         replaceAssetsReferences(dir, dir, assetSubstitutes, generatorSettings);
     }
 
