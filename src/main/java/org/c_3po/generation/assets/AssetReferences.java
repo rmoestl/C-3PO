@@ -147,9 +147,9 @@ public class AssetReferences {
                 String oldAssetFileName = Paths.get(assetURI.getPath()).getFileName().toString();
                 String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
 
-                // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
-                //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                return assetRefValue.replace(oldAssetFileName, newAssetFileName);
+                // Ensure only last occurrence of file name is replaced since file
+                // name can be part of the asset path as well, for example `css/main.css/main.css`.
+                return Pattern.compile(oldAssetFileName + "$").matcher(assetRefValue).replaceFirst(newAssetFileName);
             } else {
                 LOG.warn(String.format("Failed to substitute asset resource '%s'", assetRefValue));
             }

@@ -348,6 +348,23 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         assertStylesheetRef(doc, "/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
     }
 
+    def "omits replacing asset name strings that are part of the asset path as well" () {
+        given:
+        def substitutes = [
+                '/css/main.css': '/css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css',
+                '/css/main.css/main.css': '/css/main.css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css'
+        ]
+        def ref = "/css/main.css/main.css"
+        def doc = createDoc(ref)
+        def docURI = URI.create("/about.html")
+
+        when:
+        AssetReferences.replaceAssetsReferencesInDoc(doc, docURI, substitutes, generatorSettings)
+
+        then:
+        assertStylesheetRef(doc, "/css/main.css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css")
+    }
+
     void assertStylesheetRef(doc, expectedRef, linkElemIndex = 0) {
         assert doc.select("link[rel='stylesheet']").get(linkElemIndex).attr("href") == expectedRef
     }
