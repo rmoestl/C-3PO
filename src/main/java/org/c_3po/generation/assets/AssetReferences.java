@@ -95,9 +95,32 @@ public class AssetReferences {
 
     private static void replaceImageReferences(Document doc, URI websiteBaseURI, URI docBaseURI,
                                                Map<String, String> substitutes) {
-        // TODO: Consider all different ways to load an image (i.e. responsive images).
+        // Note: Only those ways to embed an image in HTML are supported that
+        // are used right now by the sites built with C-3PO.
+
+        // Replace refs in standard `src` attributes
         var elements = doc.select("img[src]");
         replaceReferences(elements, "src", websiteBaseURI, docBaseURI, substitutes);
+
+        // Replace refs in `srcset` attributes
+        // Note: It's special cause it can include multiple refs.
+        // Therefore the generic method can't be used.
+        for (Element element : elements) {
+            if (element.hasAttr("srcset")) {
+                var srcsetAttr = element.attr("srcset");
+
+                // TODO: May refactor to extractRefs because we're only interested in refs, not in descriptors
+                var sources = HtmlSrcset.parse(srcsetAttr);
+                for (String source : sources) {
+                    var split = source.trim().split(" ");
+                    var ref = split[0];
+                    var replacedRef = replaceReference(ref, websiteBaseURI, docBaseURI, substitutes);
+                    srcsetAttr = srcsetAttr.replace(ref, replacedRef);
+                }
+
+                element.attr("srcset", srcsetAttr);
+            }
+        }
     }
 
     // TODO: Find a better name which could also mean to rename other functions in
@@ -106,25 +129,32 @@ public class AssetReferences {
                                           Map<String, String> substitutes) {
         for (Element element : elements) {
             String assetRefValue = element.attr(refAttrName);
-            var assetURI = URI.create(assetRefValue);
-            if (isAssetControlledByWebsite(assetURI, websiteBaseURI, docBaseURI)) {
-                String assetPath = translateToAssetPath(assetURI, docBaseURI);
+            element.attr(refAttrName, replaceReference(assetRefValue, websiteBaseURI, docBaseURI, substitutes));
+        }
+    }
 
-                String substitutePath = substitutes.get(assetPath);
-                if (substitutePath != null) {
+    // TODO: Think about renaming, e.g. to `mapReference`.
+    private static String replaceReference(String assetRefValue, URI websiteBaseURI, URI docBaseURI,
+                                           Map<String, String> substitutes) {
+        var assetURI = URI.create(assetRefValue);
+        if (isAssetControlledByWebsite(assetURI, websiteBaseURI, docBaseURI)) {
+            String assetPath = translateToAssetPath(assetURI, docBaseURI);
+            String substitutePath = substitutes.get(assetPath);
+            if (substitutePath != null) {
 
-                    // Note: Replace the asset's name only and leave the URL untouched otherwise.
-                    String oldAssetFileName = Paths.get(assetURI.getPath()).getFileName().toString();
-                    String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
+                // Note: Replace the asset's name only and leave the URL untouched otherwise.
+                String oldAssetFileName = Paths.get(assetURI.getPath()).getFileName().toString();
+                String newAssetFileName = Paths.get(substitutePath).getFileName().toString();
 
-                    // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
-                    //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
-                    element.attr(refAttrName, assetRefValue.replace(oldAssetFileName, newAssetFileName));
-                } else {
-                    LOG.warn(String.format("Failed to substitute asset resource '%s'", assetRefValue));
-                }
+                // TODO: Ensure only last occurrence is replaced since String.replace will replace all occurrences
+                //  since the asset file name could be part of the path as well, e.g. css/main.css/main.css
+                return assetRefValue.replace(oldAssetFileName, newAssetFileName);
+            } else {
+                LOG.warn(String.format("Failed to substitute asset resource '%s'", assetRefValue));
             }
         }
+
+        return assetRefValue;
     }
 
     /**

@@ -83,6 +83,38 @@ class ReplaceAssetsReferencesInDocSpec extends Specification {
         doc.select("img[src]").get(0).attr("src") == "/img/picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
     }
 
+    def "replaces image references of sort <img srcset=\"...\">" () {
+        def substitutes = [
+                '/img/picture_1470x.jpg': '/img/picture_1470x.e53496215f3b967267859fd2b108e29dbffc555c.jpg',
+                '/img/picture_760x.jpg': '/img/picture_760x.267859fd2b108e29dbffc555ce53496215f3b967.jpg',
+                '/img/picture_380x.jpg': '/img/picture_380x.9fd2b108e29dbffc555ce53496215f3b96726785.jpg'
+        ]
+        def docURI = URI.create("/blog/a-blog-article.html")
+        def doc = Jsoup.parse("""\
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <title>Foo</title>
+              <img srcset="/img/picture_1470x.jpg 1470w, /img/picture_760x.jpg 760w, /img/picture_380x.jpg 380w"
+                  sizes="(max-width: 979px) 100vw, 50vw"
+                  src="/img/picture_1470x.jpg"/>
+            </head>
+            <body></body>
+            </html>
+            """)
+
+        when:
+        AssetReferences.replaceAssetsReferences(doc, docURI, substitutes, generatorSettings)
+
+        then:
+        doc.select("img").get(0).attr("src") == "/img/picture_1470x.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
+        doc.select("img").get(0).attr("srcset") ==
+            "/img/picture_1470x.e53496215f3b967267859fd2b108e29dbffc555c.jpg 1470w, " +
+            "/img/picture_760x.267859fd2b108e29dbffc555ce53496215f3b967.jpg 760w, " +
+            "/img/picture_380x.9fd2b108e29dbffc555ce53496215f3b96726785.jpg 380w"
+    }
+
     @Unroll
     def "replaces absolute asset references of type '#ref'" (String ref, String refPastReplacement) {
         given:
