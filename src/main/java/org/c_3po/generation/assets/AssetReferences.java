@@ -178,47 +178,33 @@ public class AssetReferences {
         }
     }
 
+    /**
+     * Translates the given URI to its corresponding asset path.
+     *
+     * The passed URI can be an absolute URI, a protocol-relative URI, a root-relative URI,
+     * or a relative URI. To get an overview of the various URI types, see
+     * https://yodaconditions.net/blog/html-url-types.html.
+     *
+     * When a passed URI references the fingerprinted version of an asset,
+     * this fingerprint is cut out from the result.
+     *
+     * @param assetRefURI the URI of the asset reference in HTML
+     * @param docBaseURI the base URI of the document the asset is referenced in which is needed
+     *                   to resolve document-relative URIs. Base URI means that the caller
+     *                   also needs to consider a possible `<base>` element within the documents
+     *                   markup.
+     * @return the normalized asset path with a leading slash which represents
+     *         the root directory of the project
+     */
     private static String translateToAssetPath(URI assetRefURI, URI docBaseURI) {
-        /*
-            TODO: Turn the comment into a function description
-            The difficulty is to look at an URL and identify which
-            asset is referenced by it.
-
-            Types of URLs:
-
-            https://example.com/index.html ==> Absolute URL
-            //example.com/index.html ==> Implicit schema absolute URL, or better known as protocol-relative URI
-            /css/main.css ==> Implicit schema and host absolute URL
-            css/main.css ==> Document-relative URL
-
-            Specs
-            - Absolute URLs and implicit schema absolute URLs that reference the host either with or without www
-            subdomain are considered to be resources held by the website that is being built.
-            - Absolute URLs and implicit schema absolute URLs whose root domain is the same but have a different
-            subdomain, e.g. blog.example.com are considered to not be held by this website. They are treated as foreign
-            domains.
-            - Any other absolute URLs are considered to be resources from third parties and thus are not replaced.
-
-            - An absolute URL with implicit schema and host is the easiest. It should only be normalized and then be
-            compared if any asset path is matching.
-
-            - A relative URL is relative to the document it is referenced by. So, I'll need to construct the URI
-            of the document and then `resolve()` the relative URLs. Then query the path portion via `getPath()`
-            to obtain the asset path.
-            - For a relative URL, always see if there are `<base>` elements in the parent document. Before calling
-            resolve, be sure to resolve (?!) the base elements' `href` value. If there are multiple base elements,
-            use the first one that has an href attribute.
-            See https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url.
-        */
-
         String assetPath;
 
         if (isDocumentRelativeURI(assetRefURI)) {
             assetPath = docBaseURI.resolve(assetRefURI).normalize().getPath();
 
-            // TODO: Add leading slash might be brittle but fact is that .getPath() after .resolve()
-            //  does not render a leading slash if relative URI is of form `foo/bar.css` and baseURI
-            //  does not have a path portion. It might be even more complicated than that.
+            // Note: A leading slash is prepended, when Path.getPath() does not return a String with
+            // a leading slash. This could be the case if the document's base URI does not have a path portion.
+            // The leading slash is required to adhere to the pattern of a normalized asset path.
             assetPath = assetPath.startsWith("/") ? assetPath : "/" + assetPath;
         } else if (isProtocolRelativeURI(assetRefURI)) {
             assetPath = assetRefURI.normalize().getPath();
@@ -228,7 +214,13 @@ public class AssetReferences {
             assetPath = assetRefURI.normalize().getPath();
         } else {
 
-            // TODO: Decide if this should be a warning. I think so.
+            // Note: This could be an error as well, but in auto-build mode, there can
+            // easy be a situation, that would raise and thus kill the process. One could
+            // think about differentiating behavior based on one-time and auto-build mode
+            // but there's not the necessary infrastructure (e.g. a generation context object)
+            // for that right now.
+            LOG.warn(String.format("Failed to discern URL type of '%s' when trying to map it to the corresponding " +
+                    "site asset path. Leaving it unprocessed.", assetRefURI));
             assetPath = assetRefURI.toString();
         }
 
