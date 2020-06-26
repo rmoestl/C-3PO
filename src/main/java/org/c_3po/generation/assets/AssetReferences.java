@@ -109,11 +109,8 @@ public class AssetReferences {
             if (element.hasAttr("srcset")) {
                 var srcsetAttr = element.attr("srcset");
 
-                // TODO: May refactor to extractRefs because we're only interested in refs, not in descriptors
-                var sources = HtmlSrcset.parse(srcsetAttr);
-                for (String source : sources) {
-                    var split = source.trim().split(" ");
-                    var ref = split[0];
+                var refs = HtmlSrcset.extractRefs(srcsetAttr);
+                for (String ref : refs) {
                     var replacedRef = replaceReference(ref, websiteBaseURI, docBaseURI, substitutes);
                     srcsetAttr = srcsetAttr.replace(ref, replacedRef);
                 }
