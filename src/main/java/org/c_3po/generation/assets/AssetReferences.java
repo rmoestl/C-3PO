@@ -88,8 +88,9 @@ public class AssetReferences {
 
     private static void replaceJSReferences(Document doc, URI websiteBaseURI, URI docBaseURI,
                                             Map<String, String> substitutes) {
-        // TODO: Is this the only way to load an external JavaScript file?
-        // TODO: Could a script tag also load something else than JavaScript?
+        // Note: Quick research didn't reveal any other method of loading an
+        // external JavaScript file. And sites built with this generator
+        // don't use any other way.
         var elements = doc.select("script[src]");
         replaceReferences(elements, "src", websiteBaseURI, docBaseURI, substitutes);
     }
