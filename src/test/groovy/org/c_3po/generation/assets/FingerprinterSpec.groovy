@@ -147,12 +147,7 @@ class FingerprinterSpec extends Specification {
         destDirClone.toFile().deleteDir()
     }
 
-    // TODO: Description on asset level doesn't fit the test contents that's based on CSS.
-    //  It's yet unclear how the final API will look. At time of writing
-    //  .fingerprintStylesheets was just a wrapper of the private .fingerprintAssets
-    //  function. It's perfectly possible that those wrapper functions are going
-    //  to be moved to the caller class and thus disappear from the fingerprinting API.
-    def "does not fingerprint an already fingerprinted asset file again" () {
+    def "does not fingerprint an already fingerprinted stylesheet file again" () {
         given: "fingerprinting is executed once"
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
 
@@ -166,14 +161,9 @@ class FingerprinterSpec extends Specification {
                 "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
     }
 
-    // TODO: Description on asset level doesn't fit the test contents that's based on CSS.
-    //  It's yet unclear how the final API will look. At time of writing
-    //  .fingerprintStylesheets was just a wrapper of the private .fingerprintAssets
-    //  function. It's perfectly possible that those wrapper functions are going
-    //  to be moved to the caller class and thus disappear from the fingerprinting API.
-    def "deletes fingerprinted files if their fingerprint is outdated" () {
-        def newFilename = "main.3068d19b5816a4c201a3d72ca4e5e7433537b947.css"
+    def "deletes fingerprinted stylesheet files if their fingerprint is outdated" () {
         def oldFilename = "main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"
+        def newFilename = "main.3068d19b5816a4c201a3d72ca4e5e7433537b947.css"
 
         given: "an already fingerprinted css file"
         Fingerprinter.fingerprintStylesheets(cssDir, destDir)
@@ -189,6 +179,74 @@ class FingerprinterSpec extends Specification {
 
         and: "the old fingerprinted version gets deleted"
         Files.notExists(cssDir.resolve(oldFilename))
+    }
+
+    def "does not fingerprint an already fingerprinted JavaScript file again" () {
+        given: "fingerprinting is executed once"
+        Fingerprinter.fingerprintJsFiles(jsDir, destDir)
+
+        when: "being executed a second time"
+        Fingerprinter.fingerprintJsFiles(jsDir, destDir)
+
+        then: "an already fingerprinted file is not fingerprinted again"
+        Files.exists(jsDir.resolve("main.js"))
+        Files.exists(jsDir.resolve("main.44782b626616c6098994363811a6014c6771c5d5.js"))
+        Files.notExists(jsDir.resolve(
+                "main.44782b626616c6098994363811a6014c6771c5d5.44782b626616c6098994363811a6014c6771c5d5.css"))
+    }
+
+    def "deletes fingerprinted JavaScript files if their fingerprint is outdated" () {
+        def oldFilename = "main.44782b626616c6098994363811a6014c6771c5d5.js"
+        def newFilename = "main.aa661d0bf7642c899dba93282d052dfef4645e86.js"
+
+        given: "an already fingerprinted js file"
+        Fingerprinter.fingerprintJsFiles(jsDir, destDir)
+
+        when: "its content is being changed"
+        Files.write(destDir.resolve("js/main.js"), "console.log('Foo!')".getBytes(), StandardOpenOption.APPEND)
+
+        and: "fingerprinted again"
+        Fingerprinter.fingerprintJsFiles(jsDir, destDir)
+
+        then: "the new fingerprinted version gets created"
+        Files.exists(jsDir.resolve(newFilename))
+
+        and: "the old fingerprinted version gets deleted"
+        Files.notExists(jsDir.resolve(oldFilename))
+    }
+
+    def "does not fingerprint an already fingerprinted image file again" () {
+        given: "fingerprinting is executed once"
+        Fingerprinter.fingerprintImageFiles(imgDir, destDir)
+
+        when: "being executed a second time"
+        Fingerprinter.fingerprintImageFiles(imgDir, destDir)
+
+        then: "an already fingerprinted file is not fingerprinted again"
+        Files.exists(imgDir.resolve("picture.jpg"))
+        Files.exists(imgDir.resolve("picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"))
+        Files.notExists(imgDir.resolve(
+                "picture.e53496215f3b967267859fd2b108e29dbffc555c.e53496215f3b967267859fd2b108e29dbffc555c.jpg"))
+    }
+
+    def "deletes fingerprinted image files if their fingerprint is outdated" () {
+        def oldFilename = "picture.e53496215f3b967267859fd2b108e29dbffc555c.jpg"
+        def newFilename = "picture.b687f26535d07adea0f8dbe1863248f446bd5249.jpg"
+
+        given: "an already fingerprinted image file"
+        Fingerprinter.fingerprintImageFiles(imgDir, destDir)
+
+        when: "its content is being changed"
+        Files.write(destDir.resolve("img/picture.jpg"), "new pixels ;-)".getBytes(), StandardOpenOption.APPEND)
+
+        and: "fingerprinted again"
+        Fingerprinter.fingerprintImageFiles(imgDir, destDir)
+
+        then: "the new fingerprinted version gets created"
+        Files.exists(imgDir.resolve(newFilename))
+
+        and: "the old fingerprinted version gets deleted"
+        Files.notExists(imgDir.resolve(oldFilename))
     }
 
     def filesExist(dir, String... fileNames) {
