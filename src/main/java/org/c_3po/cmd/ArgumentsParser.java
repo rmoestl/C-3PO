@@ -35,8 +35,8 @@ public class ArgumentsParser {
             }
         }
 
-        // TODO: Introduce cmd switch for fingerprinting.
-        // TODO: Properly document switch for users.
-        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild, true);
+        // TODO: Introduce cmd switch for fingerprinting and purging unused css.
+        // TODO: Properly document switches for users.
+        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild, true, true);
     }
 }

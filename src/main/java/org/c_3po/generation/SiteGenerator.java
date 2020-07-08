@@ -32,6 +32,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoField;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static java.nio.file.StandardOpenOption.*;
 import static java.nio.file.StandardWatchEventKinds.*;
@@ -44,10 +45,13 @@ public class SiteGenerator {
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
     private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
     private static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
+    private static final String SETTING_NODEJS_HOME = "nodejsHome";
+    private static final String SETTING_PURIFYCSS_HOME = "purifycssHome";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
     private final boolean shouldFingerprintAssets;
+    private final boolean shouldPurgeUnusedCss;
     private final Properties settings;
 
     private final DirectoryStream.Filter<Path> sourceHtmlFilter =
@@ -79,11 +83,12 @@ public class SiteGenerator {
     private IgnorablesMatcher resultIgnorablesMatcher;
 
     private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, boolean fingerprintAssets,
-                          List<String> completeIgnorables, List<String> resultIgnorables,
+                          boolean purgeUnusedCss, List<String> completeIgnorables, List<String> resultIgnorables,
                           Properties settings) {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
         this.shouldFingerprintAssets = fingerprintAssets;
+        this.shouldPurgeUnusedCss = purgeUnusedCss;
         this.settings = settings;
         this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.markdownProcessor = MarkdownProcessor.getInstance();
@@ -114,6 +119,7 @@ public class SiteGenerator {
         return new SiteGenerator(sourceDirectoryPath,
                 Paths.get(cmdArguments.getDestinationDirectory()),
                 cmdArguments.shouldFingerprintAssets(),
+                cmdArguments.shouldPurgeUnusedCss(),
                 getCompleteIgnorables(sourceDirectoryPath),
                 Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)), settings);
     }
@@ -279,7 +285,8 @@ public class SiteGenerator {
 
         buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
 
-        // TODO: Somehow use purge-css as well if the respective flag is set
+        purgeUnusedCssInAllStylesheetsIfEnabled();
+
         fingerprintAssetsIfEnabled();
     }
 
@@ -288,7 +295,8 @@ public class SiteGenerator {
 
         buildPagesAndAssets(srcSubDir, destinationDirectoryPath.resolve(srcSubDir));
 
-        // TODO: Somehow use purge-css as well if the respective flag is set
+        purgeUnusedCssInAllStylesheetsIfEnabled();
+
         fingerprintAssetsIfEnabled();
     }
 
@@ -469,6 +477,105 @@ public class SiteGenerator {
                 }
             } catch (IOException e) {
                 LOG.warn("Failed to generate sitemap file.", e);
+            }
+        }
+    }
+
+    private void purgeUnusedCssInAllStylesheetsIfEnabled() throws IOException, GenerationException {
+        if (this.shouldPurgeUnusedCss) {
+
+            // Check if purifycss is configured properly
+            var nodejsHome = this.settings.getProperty(SETTING_NODEJS_HOME);
+            var purifycssHome = this.settings.getProperty(SETTING_PURIFYCSS_HOME);
+            if (nodejsHome == null || purifycssHome == null) {
+                if (nodejsHome == null) {
+                    LOG.error("Setting '{}', mandatory for purging unused CSS, is missing in .c3posettings",
+                            SETTING_NODEJS_HOME);
+                }
+                if (purifycssHome == null) {
+                    LOG.error("Setting '{}', mandatory for purging unused CSS, is missing in .c3posettings",
+                            SETTING_PURIFYCSS_HOME);
+                }
+                throw new GenerationException("Abort build because purging unused CSS is active but not " +
+                        "set up properly. See log for more details.");
+            }
+
+            // Trigger purging at /css root dir
+            purgeUnusedCSSInDir(destinationDirectoryPath.resolve("css"), nodejsHome, purifycssHome);
+        }
+    }
+
+    private void purgeUnusedCSSInDir(final Path dir, final String nodejsHome, final String purifycssHome)
+            throws IOException {
+
+        // Build filter of CSS files excluding fingerprinted ones
+        var cssFileRegex = "\\.css$";
+        var fingerprintedCssFileRegex = "\\.[0123456789abcdef]{40}" + cssFileRegex; // TODO: DRY
+        var cssFilePattern = Pattern.compile(cssFileRegex, Pattern.CASE_INSENSITIVE);
+        var fingerprintedCssFilePattern = Pattern.compile(fingerprintedCssFileRegex, Pattern.CASE_INSENSITIVE);
+        DirectoryStream.Filter<Path> filter =
+                entry -> {
+                    String fileName = entry.toFile().getName();
+                    return Files.isRegularFile(entry)
+                            && cssFilePattern.matcher(fileName).find()
+                            && !fingerprintedCssFilePattern.matcher(fileName).find();
+                };
+
+        // Prepare process
+        var pb = new ProcessBuilder();
+        pb.environment().put("PATH", nodejsHome); // Put nodejs' home on the path caused it's required by purifycss
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT); // Redirect stdout to parent process
+        pb.redirectError(ProcessBuilder.Redirect.INHERIT); // Redirect stderr to parent process
+
+        // Process each CSS file
+        try (var cssFiles = Files.newDirectoryStream(dir, filter)) {
+            for (Path cssFile : cssFiles) {
+                LOG.debug("Purging unused CSS in '{}'", cssFile);
+
+                var purifiedCssFileName = cssFile.getFileName().toString() + ".purified";
+                var purifiedCssFile = dir.resolve(purifiedCssFileName);
+
+                // Adapt command to css file currently in process
+                //
+                // A few notes on purifycss and its usage herein
+                //   - Why purifycss at all? Because it has the best CLI interface.
+                //   - Pass absolute paths to ensure they're valid in context of calling purifycss.
+                //   - The glob pattern for `content` takes care that html files in project root and any sub
+                //     directories are considered. This has been tested thoroughly by hand because automating
+                //     this test won't be worth my time.
+                //   - If given multiple files, purifycss' CLI will distinct their type by file extension.
+                pb.command(Paths.get(purifycssHome, "purifycss").toString(),
+                        cssFile.toString(), // The CSS file(s), multiple can be passed
+                        destinationDirectoryPath.toAbsolutePath().toString() + "/**/*html", // Content
+                        "-mir", // -m ... minimize; -i ... log compression info; -r ... log rejected CSS rules
+                        "-o", // -o ... output path switch
+                        purifiedCssFile.toString() // output path the purified version is written to
+                );
+
+                // Start external process
+                var process = pb.start();
+                try {
+                    var exitCode = process.waitFor();
+                    if (exitCode != 0) {
+                        LOG.warn("Caution! External process purging unused CSS " +
+                                "terminated with non-zero exit code " + exitCode);
+                    }
+
+                    // Replace original file with purified one. Sometimes the developer wants
+                    // to keep unused CSS in order to be able to use it later in the browser
+                    // dev tools.
+                    Files.delete(cssFile);
+                    Files.move(purifiedCssFile, cssFile);
+                } catch (InterruptedException e) {
+                    LOG.error("Failed to wait for external process purging unused CSS", e);
+                }
+            }
+        }
+
+        // Recurse into sub directories
+        try (DirectoryStream<Path> subDirs = FileFilters.subDirStream(dir)) {
+            for (Path subDir : subDirs) {
+                purgeUnusedCSSInDir(subDir, nodejsHome, purifycssHome);
             }
         }
     }

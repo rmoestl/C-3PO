@@ -9,7 +9,7 @@ import spock.lang.Unroll
 @Unroll
 class CmdArgumentsTest extends Specification {
     def "test that .validate returns '#expectedResult' for '#src' and '#dest'"(String src, String dest, boolean expectedResult) {
-        def cmdArgs = new CmdArguments(src, dest, false, false)
+        def cmdArgs = new CmdArguments(src, dest, false, false, false)
 
         expect:
         cmdArgs.validate() == expectedResult

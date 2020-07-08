@@ -23,7 +23,7 @@ class SiteGeneratorSpec extends Specification {
 
     def "test that a not existing source directory isn't accepted"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.resolve("/foo").toString(), destDir.toString(), false, false)
+        def cmdArguments = new CmdArguments(srcDir.resolve("/foo").toString(), destDir.toString(), false, false, false)
 
         when:
         SiteGenerator.fromCmdArguments(cmdArguments);
@@ -34,7 +34,8 @@ class SiteGeneratorSpec extends Specification {
 
     def "test that a file as a source directory isn't accepted"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.resolve("blog.html").toString(), destDir.toString(), false, false)
+        def cmdArguments = new CmdArguments(srcDir.resolve("blog.html").toString(), destDir.toString(), false, false,
+                false)
 
         when:
         SiteGenerator.fromCmdArguments(cmdArguments);
@@ -45,7 +46,7 @@ class SiteGeneratorSpec extends Specification {
 
     def "test that result-ignorables are not put into the destination directory / output"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false)
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
         when:
@@ -57,7 +58,7 @@ class SiteGeneratorSpec extends Specification {
 
     def "test that standard C-3PO files are not put into the destination directory / output"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false)
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
         when:
@@ -71,7 +72,8 @@ class SiteGeneratorSpec extends Specification {
     def "is able to fingerprint assets, e.g. to make cache busting possible" () {
         given: "a site that shall be generated with fingerprinting"
         def shouldFingerprintAssets = true
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets)
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets,
+                false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
         when: "being generated"
@@ -94,7 +96,8 @@ class SiteGeneratorSpec extends Specification {
     def "allows to omit fingerprinting assets" () {
         setup:
         def shouldFingerprintAssets = false
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets)
+        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets,
+                false)
         def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
 
         when:

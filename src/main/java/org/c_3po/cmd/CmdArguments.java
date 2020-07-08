@@ -18,13 +18,15 @@ public class CmdArguments {
     private final String destinationDirectory;
     private final boolean autoBuild;
     private final boolean fingerprintAssets;
+    private final boolean purgeCss;
 
     public CmdArguments(String sourceDirectory, String destinationDirectory, boolean autoBuild,
-                        boolean fingerprintAssets) {
+                        boolean fingerprintAssets, boolean purgeCss) {
         this.sourceDirectory = sourceDirectory;
         this.destinationDirectory = destinationDirectory;
         this.autoBuild = autoBuild;
         this.fingerprintAssets = fingerprintAssets;
+        this.purgeCss = purgeCss;
     }
 
     public String getSourceDirectory() {
@@ -43,6 +45,10 @@ public class CmdArguments {
         return fingerprintAssets;
     }
 
+    public boolean shouldPurgeUnusedCss() {
+        return purgeCss;
+    }
+
     public boolean validate() throws IOException {
         boolean validationResult = true;
 
@@ -57,6 +63,7 @@ public class CmdArguments {
                 "sourceDirectory='" + sourceDirectory + '\'' +
                 ", destinationDirectory='" + destinationDirectory + '\'' +
                 ", fingerprintAssets='" + fingerprintAssets + '\'' +
+                ", purgeCss='" + purgeCss + '\'' +
                 ", autoBuild=" + autoBuild +
                 '}';
     }
