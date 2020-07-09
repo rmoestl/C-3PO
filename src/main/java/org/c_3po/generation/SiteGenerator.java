@@ -47,6 +47,7 @@ public class SiteGenerator {
     private static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
     private static final String SETTING_NODEJS_HOME = "nodejsHome";
     private static final String SETTING_PURIFYCSS_HOME = "purifycssHome";
+    private static final String SETTING_PURIFYCSS_WHITELIST = "purifycssWhitelist";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
@@ -487,6 +488,7 @@ public class SiteGenerator {
             // Check if purifycss is configured properly
             var nodejsHome = this.settings.getProperty(SETTING_NODEJS_HOME);
             var purifycssHome = this.settings.getProperty(SETTING_PURIFYCSS_HOME);
+            var purifycssWhitelist = this.settings.getProperty(SETTING_PURIFYCSS_WHITELIST, "");
             if (nodejsHome == null || purifycssHome == null) {
                 if (nodejsHome == null) {
                     LOG.error("Setting '{}', mandatory for purging unused CSS, is missing in .c3posettings",
@@ -501,11 +503,12 @@ public class SiteGenerator {
             }
 
             // Trigger purging at /css root dir
-            purgeUnusedCSSInDir(destinationDirectoryPath.resolve("css"), nodejsHome, purifycssHome);
+            purgeUnusedCSSInDir(destinationDirectoryPath.resolve("css"), nodejsHome, purifycssHome, purifycssWhitelist);
         }
     }
 
-    private void purgeUnusedCSSInDir(final Path dir, final String nodejsHome, final String purifycssHome)
+    private void purgeUnusedCSSInDir(final Path dir, final String nodejsHome, final String purifycssHome,
+                                     final String purifycssWhitelist)
             throws IOException {
 
         // Build filter of CSS files excluding fingerprinted ones
@@ -547,6 +550,8 @@ public class SiteGenerator {
                 pb.command(Paths.get(purifycssHome, "purifycss").toString(),
                         cssFile.toString(), // The CSS file(s), multiple can be passed
                         destinationDirectoryPath.toAbsolutePath().toString() + "/**/*html", // Content
+                        "-w", // -w ... whitelist
+                        purifycssWhitelist, // list of whitelisted selectors
                         "-mir", // -m ... minimize; -i ... log compression info; -r ... log rejected CSS rules
                         "-o", // -o ... output path switch
                         purifiedCssFile.toString() // output path the purified version is written to
@@ -575,7 +580,7 @@ public class SiteGenerator {
         // Recurse into sub directories
         try (DirectoryStream<Path> subDirs = FileFilters.subDirStream(dir)) {
             for (Path subDir : subDirs) {
-                purgeUnusedCSSInDir(subDir, nodejsHome, purifycssHome);
+                purgeUnusedCSSInDir(subDir, nodejsHome, purifycssHome, purifycssWhitelist);
             }
         }
     }

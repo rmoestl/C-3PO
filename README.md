@@ -83,7 +83,7 @@ Here is a list of available settings:
 - `baseUrl` ... the base URL of the deployed website. If not set, C-3PO does not generate a sitemap.xml file.
 - `nodejsHome` ... the home directory of a nodejs binary which is required for running *purifycss* to purge unused CSS. If you're using *nvm* to manage nodejs installations, this would look something like this: `nodejsHome=/home/robert/.nvm/versions/node/v10.15.3/bin`.
 - `purifycssHome` ...  the home directory of the purifycss installation which is required by C-3PO to purge unused CSS. If you're using *nvm* to manage nodejs installations, this would look something like this: `purifycssHome=/home/robert/.nvm/versions/node/v10.15.3/bin/`.
-
+- `purifycssWhitelist` ... value supplied to purifycss' whitelist parameter which allows to whitelist CSS selectors from being purged.
 
 ### Generating sitemap.xml and robots.txt
 
