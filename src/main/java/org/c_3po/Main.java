@@ -22,7 +22,9 @@ public class Main {
             CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
             LOG.debug("src (source directory) is: {}", cmdArguments.getSourceDirectory());
             LOG.debug("dest (destination directory) is: {}", cmdArguments.getDestinationDirectory());
-            LOG.debug("autoBuild is: {}", String.valueOf(cmdArguments.isAutoBuild()));
+            LOG.debug("autoBuild is: {}", cmdArguments.isAutoBuild());
+            LOG.debug("fingerprint is: {}", cmdArguments.shouldFingerprintAssets());
+            LOG.debug("purgeUnusedCss is: {}", cmdArguments.shouldPurgeUnusedCss());
 
             // Do cmd arguments validation
             final boolean cmdArgsValid = cmdArguments.validate();

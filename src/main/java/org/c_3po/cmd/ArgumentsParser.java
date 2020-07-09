@@ -13,6 +13,8 @@ public class ArgumentsParser {
         String sourceDirectoryName = "";
         String destinationDirectoryName = "";
         boolean autoBuild = false;
+        boolean fingerprint = false;
+        boolean purgeUnusedCss = false;
 
         for (int i = 0; i < args.length; i++) {
             String argument = args[i];
@@ -33,10 +35,17 @@ public class ArgumentsParser {
             if ("-a".equals(argument)) {
                 autoBuild = true;
             }
+
+            if ("--fingerprint".equals(argument) || "-p".equals(argument)) {
+                fingerprint = true;
+            }
+
+            if ("--purge-unused-css".equals(argument) || "-p".equals(argument)) {
+                purgeUnusedCss = true;
+            }
         }
 
-        // TODO: Introduce cmd switch for fingerprinting and purging unused css.
         // TODO: Properly document switches for users.
-        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild, true, true);
+        return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild, fingerprint, purgeUnusedCss);
     }
 }
