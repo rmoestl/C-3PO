@@ -45,7 +45,6 @@ public class ArgumentsParser {
             }
         }
 
-        // TODO: Properly document switches for users.
         return new CmdArguments(sourceDirectoryName, destinationDirectoryName, autoBuild, fingerprint, purgeUnusedCss);
     }
 }

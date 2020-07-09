@@ -1,8 +1,8 @@
 # C-3PO
 
-C-3PO is a Java-based static web site generator.
+C-3PO is a static website generator for the JVM.
 
-First and foremost C-3PO is based on the [Thymeleaf 2.1.3](http://www.thymeleaf.org/doc/tutorials/2.1/usingthymeleaf.html)
+First and foremost C-3PO is using the [Thymeleaf 2.1.3](http://www.thymeleaf.org/doc/tutorials/2.1/usingthymeleaf.html)
 templating system. Thymeleaf is a template engine (like JSP) but also
 involves good layout support (like Tiles).
 
@@ -10,12 +10,14 @@ involves good layout support (like Tiles).
 ## Requirements
 
 C-3PO requires a Java 11 JRE installed on you computer. Upon installation you
-also need Gradle installed. C-3PO has been tested with Gradle 3.0 and 2.12.
+also need Gradle installed. C-3PO has been tested with Gradle 3.0 and 2.12. 
+
+You'd also need to install [purifycss](https://www.npmjs.com/package/purify-css) if you'd like to purge unused CSS.
 
 
 ## Setup
 
-At the moment only installing from source is supported. Follow these steps
+At the moment, only installing from source is supported. Follow these steps
 
 - ensure a Java SE JDK 11 is installed on your computer
 - ensure Gradle (version 3.0, version 2.12 should be fine too) is installed on your computer
@@ -28,9 +30,12 @@ At the moment only installing from source is supported. Follow these steps
 
 C-3PO is a command line tool, both for Windows and Unix. C-3PO accepts these command line paramters:
 
-- -src <dir-name> ... the root source directory of your website
-- -dest <dir-name> ... the root destination directory in which the website should be generated into
-- -a ... if the flag is set, C-3PO builds the website as soon as files have changed in the source directory tree. This is a useful option when fiddling around with CSS for example.
+- `-src <dir-name>` ... the root source directory of your website.
+- `-dest <dir-name>` ... the root destination directory in which the website should be generated into.
+- `-a` ... if the flag is set, C-3PO builds the website as soon as files have changed in the source directory tree. This is a useful option when fiddling around with CSS for example.
+- `--fingerprint` ... if set, C-3PO fingerprints static asset files like stylesheets, JavaScript files and images (supported image file extensions are *.png*, *.jpg*, *.jpeg*, *.svg*, *.gif*, *.webp*) and replaces references to them in generated HTML documents accordingly.
+- `--purge-unused-css` ... if set, attempts to purge unused CSS rules in all CSS files beneath `./css`. For this to work, [purifycss](https://www.npmjs.com/package/purify-css) needs to be installed and configured properly in `.c3posettings`.
+- `-p` ... stands for production and automatically sets `--fingerprint` and `--purge-unused-css`. 
 
 **Heads up!** C-3PO is preventing you from accidentally using the same `src` and `dest` directories because this would mean that the source files would be overwritten by their generated counterparts.
 
@@ -53,7 +58,7 @@ However, it is recommended to follow well-established standards. Here's an
 example:
 
 - *css/* --> your own CSS or SASS stylesheets
-- *css/vendor* --> thired-party CSS stylesheets
+- *css/vendor* --> third-party CSS stylesheets
 - *js/* --> your own JavaScript files
 - *js/vendor/* --> third-party JavaScript files
 - *img/* --> image files
@@ -71,12 +76,13 @@ Building the sample website is done like this: `c-3po -src samples/base-website 
 
 ### Settings
 
-C-3PO looks for a **.c3posettings** file in the top-level source directory. It's a Java standard properties file
-holding configuration preferences.
+C-3PO looks for a **.c3posettings** file in the top-level source directory. It's a Java standard properties file holding configuration preferences.
 
 Here is a list of available settings:
 
-- baseUrl ... the base URL of the deployed website. If not set, C-3PO does not generate a sitemap.xml file.
+- `baseUrl` ... the base URL of the deployed website. If not set, C-3PO does not generate a sitemap.xml file.
+- `nodejsHome` ... the home directory of a nodejs binary which is required for running *purifycss* to purge unused CSS. If you're using *nvm* to manage nodejs installations, this would look something like this: `nodejsHome=/home/robert/.nvm/versions/node/v10.15.3/bin`.
+- `purifycssHome` ...  the home directory of the purifycss installation which is required by C-3PO to purge unused CSS. If you're using *nvm* to manage nodejs installations, this would look something like this: `purifycssHome=/home/robert/.nvm/versions/node/v10.15.3/bin/`.
 
 
 ### Generating sitemap.xml and robots.txt
@@ -213,6 +219,7 @@ In some cases you'll want to access the name of the markdown file, that is being
 
 **Heads up!** Before using it in your templates, you probably want to check if it is even set (e.g. when mixing markdown and html content). Here's an expression that does that: `${markdownFileName} != null`.
 
+
 ### Using SASS / SCSS
 C-3PO is able to process **SASS / SCSS** stylesheets. SASS / SCSS is a **CSS preprocessor** and enables you to use useful things
 like **selector nesting** or **variables** in your stylesheets. Read more about it at <http://sass-lang.com>.
@@ -224,6 +231,35 @@ SASS was causing some confusion.
 Note: C-3PO is minifying CSS output by default.
 
 See the sample project **samples/base-website** for a basic SASS example.
+
+
+### Fingerprinting assets to support cache busting
+
+C-3PO has asset fingerprinting built-in. Right now, it supports fingerprinting CSS, JavaScript and image files. For image files, it supports the following file extensions: *.png*, *.jpg*, *.jpeg*, *.svg*, *.gif*, *.webp*.
+
+To activate fingerprinting, either pass `--fingerprint` or `-p` on the command line. You don't have to modify your HTML (or Markdown) files for fingerprinting to work. This is in contrast to the majority of web frameworks, build tools and static site generators that require you to use special syntax to load assets. For example see the [fingerprinting section](https://guides.rubyonrails.org/asset_pipeline.html#coding-links-to-assets) in the Rails Guide or the article [How do web frameworks implement asset fingerprinting?](https://yodaconditions.net/blog/fingerprinting-assets-implementation-in-web-frameworks.html)
+
+C-3PO fingerprinting supports all kinds of URL forms as described in [Absolute and relative URLs in HTML](https://yodaconditions.net/blog/html-url-types.html) and it is able to recognize whether an asset is served by the site under construction or by an external site. One caveat here is when referencing an asset through its absolute URL, it is only considered to be controlled by the website if the asset's base URL matches `baseUrl` in `.c3posettings`. This means, given `baseURL=https://example.com`, `https://example.com/css/main.css` is considered to be an asset of the site while the www-variant `https://www.example.com/css/main.css` is not. This would be a cool feature, but read the *solution log* for more details.
+
+Fingerprinting by the way means that a hash of the file in question is calculated and appended to the file name. In case of C-3PO, `./css/main.css` turns into something like `./css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css`. The original file is kept in place. This is a safety measure for the case something goes wrong when replacing asset references in HTML by their fingerprinted counterparts. Fingerprinting does not change the contents of the file. The hash algorithm in use is *SHA-1*. C-3PO shall produce the same hashes as the Unix command`sha1sum`.
+
+#### Fingerprinting limitations
+
+- There's only one way to load external CSS and JavaScript assets in HTML. For images, there are multiple ways, and so far only `<img src="...">` and `<img srcset="...">` is supported. For `srcset`, asset URLs containing a comma will not be replaced correctly. This is due to the fact, that parsing the `srcset` syntax is not trivial.
+- Audio and video assets are not supported simply because this requirement didn't come up so far.
+- C-3PO only fingerprints stylesheets located beneath `./css`, JavaScript files beneath `./js` and image files beneath `./img`.
+
+### Purging unused CSS
+
+Purging unused CSS is the process of removing CSS rules not used on the website. Unlike with fingerprinting, C-3PO does not have this feature built-in. Instead, it relies on [purifycss](https://www.npmjs.com/package/purify-css). purifycss can be installed through npm like `npm i -g purify-css`.
+
+purifycss has been chosen because it has the most practical CLI interface. Running such tool within the JVM's JavaScript engine (is there still one in Java 11?) was not an option.
+
+For it to work, either supply the `--purge-unused-css` or `-p` command line arguments. In addition you need to set the `nodejsHome` and `purifycssHome` properties in `.c3posettings`. See the settings section for more information.
+
+How does purging unused CSS relate to fingerprinting? Not much. It runs before fingerprinting and it simply replaces the original CSS file by the purified one. This means, that fingerprinting is not aware that unused CSS is purged before.
+
+Purging unused CSS only applies to CSS files beneath the `./css` folder (including sub-directories).
 
 
 ## FAQ for Website Editing
