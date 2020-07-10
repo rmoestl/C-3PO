@@ -251,6 +251,8 @@ Fingerprinting by the way means that a hash of the file in question is calculate
 
 ### Purging unused CSS
 
+**Heads up!** This has only been tested on Linux so far.
+
 Purging unused CSS is the process of removing CSS rules not used on the website. Unlike with fingerprinting, C-3PO does not have this feature built-in. Instead, it relies on [purifycss](https://www.npmjs.com/package/purify-css). purifycss can be installed through npm like `npm i -g purify-css`.
 
 purifycss has been chosen because it has the most practical CLI interface. Running such tool within the JVM's JavaScript engine (is there still one in Java 11?) was not an option.

@@ -540,6 +540,19 @@ public class SiteGenerator {
 
                 // Adapt command to css file currently in process
                 //
+                // Isn't this insecure?
+                //
+                // Because C-3PO passes a user-controlled setting
+                // as an argument to purifycss. What if a website creator puts a malicious
+                // argument into the settings file, other people clone the website and
+                // run C-3PO themselves and suddenly the malicious argument (e.g. `rm /`)
+                // is executed on their computer? This should not be a problem because
+                // Java's ProcessBuilder does not start a new process via a shell, but instead
+                // uses the system calls `fork` and `exec` to do so. And `exec` simply forwards
+                // arguments to the binary that is going to be executed. In other words, `exec`
+                // does not have the capability like a shell to run multiple processes with one
+                // command (e.g. `vagrant halt && exit`).
+                //
                 // A few notes on purifycss and its usage herein
                 //   - Why purifycss at all? Because it has the best CLI interface.
                 //   - Pass absolute paths to ensure they're valid in context of calling purifycss.
