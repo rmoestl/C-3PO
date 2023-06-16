@@ -26,8 +26,8 @@ repositories {
 dependencies {
 
     // Thymeleaf
-    implementation group: 'org.thymeleaf', name: 'thymeleaf', version: '2.1.3.RELEASE'
-    implementation group: 'nz.net.ultraq.thymeleaf', name: 'thymeleaf-layout-dialect', version: '1.3.1'
+    implementation group: 'org.thymeleaf', name: 'thymeleaf', version: '2.1.6.RELEASE'
+    implementation group: 'nz.net.ultraq.thymeleaf', name: 'thymeleaf-layout-dialect', version: '1.4.+'
 
     // Explicitly require Groovy 3 although Thymeleaf layout dialect requires
     // Groovy 2 already. Reason: to be compatible with Java 17 (otherwise
@@ -35,20 +35,27 @@ dependencies {
     implementation group: 'org.codehaus.groovy', name: 'groovy', version: '3.0.+'
 
     // To support LEGACYHTML5 Thymeleaf mode
+    // Note: nekohtml is rather old and no new releases are expected
     implementation group: 'net.sourceforge.nekohtml', name: 'nekohtml', version: '1.9.22'
 
     // Logging
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.7'
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.1.3'
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.+'
+    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.+'
 
     // Markdown support
-    implementation group: 'com.atlassian.commonmark', name: 'commonmark', version: '0.3.0'
+    // Note: Has been moved to org.commonmark since 0.17.0,
+    // see https://github.com/commonmark/commonmark-java/issues/187.
+    // We can't depend on any greater than 0.6.0 because 0.7.0 obviously introduced a
+    // breaking API change (i.e. no HtmlRenderer class)
+    implementation group: 'com.atlassian.commonmark', name: 'commonmark', version: '0.6.0'
 
     // SCSS and SASS support
-    implementation group: 'io.bit3', name: 'jsass', version: '5.8.0'
+    // Note: 5.10.+ throws some SASS deprecation warnings that are not
+    // understood at time of writing.
+    implementation group: 'io.bit3', name: 'jsass', version: '5.9.+'
 
     // For asset fingerprinting to parse HTML
-    implementation group: 'org.jsoup', name: 'jsoup', version: '1.16.1'
+    implementation group: 'org.jsoup', name: 'jsoup', version: '1.16.+'
 
     // Testing
     testImplementation group: 'org.spockframework', name: 'spock-core', version: '2.3-groovy-3.0'
