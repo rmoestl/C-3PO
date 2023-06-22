@@ -63,4 +63,21 @@ class IgnorablesMatcherTest extends Specification {
         "site/_layouts" | true
         "site/site/_layouts" | false
     }
+
+    @Unroll
+    def "test if matcher with relative base path preceded by a \"./\" matches #path to #isMatching" (String path, boolean isMatching) {
+        setup:
+        def basePath = Paths.get("./site")
+        def matcher = IgnorablesMatcher.from(basePath, ignorableGlobPatterns)
+
+        expect:
+        isMatching == matcher.matches(Paths.get(path))
+
+        where:
+        path | isMatching
+        "./_layouts" | true
+        "_layouts" | true
+        "site/_layouts" | true
+        "site/site/_layouts" | false
+    }
 }

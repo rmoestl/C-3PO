@@ -28,8 +28,11 @@ class IgnorablesMatcher {
     }
 
     boolean matches(Path path) {
-        path = path.normalize();
-        Path relativePath = path.startsWith(basePath) ? basePath.relativize(path) : path;
+        var normalizedPath = path.normalize();
+        var normalizedBasePath = basePath.normalize();
+        Path relativePath = normalizedPath.startsWith(normalizedBasePath)
+                ? normalizedBasePath.relativize(normalizedPath)
+                : normalizedPath;
         return pathMatchers.stream().anyMatch(matcher -> matcher.matches(relativePath));
     }
 
