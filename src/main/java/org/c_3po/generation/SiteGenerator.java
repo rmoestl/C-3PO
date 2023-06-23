@@ -205,11 +205,11 @@ public class SiteGenerator {
                         } else if (staticFileFilter.accept(changedPath) ||
                                 markdownFilter.accept(changedPath) ||
                                 markdownTemplateFilter.accept(changedPath)) {
-                            Path parentDir = sourceDirectoryPath.relativize((Path) key.watchable());
+                            Path srcSubDir = (Path) key.watchable();
 
                             // Changed static assets and markdown articles don't require a full rebuild
                             // because their contents isn't copied over into another file.
-                            buildPartOfWebsite(parentDir);
+                            buildPartOfWebsite(srcSubDir);
                         } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
                             if (kind == ENTRY_CREATE) {
                                 watchKeyMap.put(registerWatchService(watchService, changedPath), changedPath);
@@ -294,7 +294,9 @@ public class SiteGenerator {
     private void buildPartOfWebsite(Path srcSubDir) throws IOException, GenerationException {
         LOG.debug("Building part of website contained in '{}'", srcSubDir);
 
-        buildPagesAndAssets(srcSubDir, destinationDirectoryPath.resolve(srcSubDir));
+        Path subDirPathRelativeToSrc = sourceDirectoryPath.relativize(srcSubDir);
+
+        buildPagesAndAssets(srcSubDir, destinationDirectoryPath.resolve(subDirPathRelativeToSrc));
 
         purgeUnusedCssInAllStylesheetsIfEnabled();
 
