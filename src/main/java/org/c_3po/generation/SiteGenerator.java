@@ -222,14 +222,15 @@ public class SiteGenerator {
                         }
                     } else if (kind == ENTRY_DELETE) {
                         if (!isCompleteIgnorable(changedPath) && !isResultIgnorable(changedPath)) {
-                            Path targetPath = destinationDirectoryPath.resolve(changedPath);
+                            Path relativeChangePath = sourceDirectoryPath.relativize(changedPath);
+                            Path targetPath = destinationDirectoryPath.resolve(relativeChangePath);
 
                             // Delete files and directories in target directory
                             if (Files.exists(targetPath)) {
                                 if (Files.isDirectory(targetPath)) {
                                     deleteDirectory(targetPath);
                                 } else {
-                                    Files.deleteIfExists(destinationDirectoryPath.resolve(changedPath));
+                                    Files.deleteIfExists(targetPath);
                                 }
                             }
 
