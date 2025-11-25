@@ -1,10 +1,13 @@
 package org.c_3po;
 
-import org.c_3po.cmd.ArgumentsParser;
 import org.c_3po.cmd.CmdArguments;
+import org.c_3po.editing.EditMode;
+import org.c_3po.generation.NewDraft;
 import org.c_3po.generation.SiteGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.file.Path;
 
 public class Main {
     private static final Logger LOG = LoggerFactory.getLogger(Main.class);
@@ -19,21 +22,23 @@ public class Main {
             LOG.info("Hello There! I'm C-3PO! Which site do you wish me to generate?");
 
             // Parsing command line arguments
-            CmdArguments cmdArguments = new ArgumentsParser().processCmdLineArguments(args);
-            LOG.debug("src (source directory) is: {}", cmdArguments.getSourceDirectory());
-            LOG.debug("dest (destination directory) is: {}", cmdArguments.getDestinationDirectory());
-            LOG.debug("autoBuild is: {}", cmdArguments.isAutoBuild());
-            LOG.debug("fingerprint is: {}", cmdArguments.shouldFingerprintAssets());
-            LOG.debug("purgeUnusedCss is: {}", cmdArguments.shouldPurgeUnusedCss());
+            final CmdArguments cmdArgs = CmdArguments.parse(args);
+            cmdArgs.logArguments();
 
-            // Do cmd arguments validation
-            final boolean cmdArgsValid = cmdArguments.validate();
+            // Validate command line arguments
+            final boolean cmdArgsValid = cmdArgs.validate();
 
-            // Generate the site
+            // Execute the requested C-3PO command
             if (cmdArgsValid) {
-                SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
-                if (cmdArguments.isAutoBuild()) {
+                SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArgs);
+                if (cmdArgs.isAutoBuild()) {
                     siteGenerator.generateOnFileChange();
+                } else if (cmdArgs.isNewDraftModeEnabled()) {
+                    Path draftFilePath = NewDraft.getFilePathFrom(cmdArgs);
+                    EditMode.start(draftFilePath, siteGenerator);
+                } else if (cmdArgs.isEditModeEnabled()) {
+                    Path filePath = EditMode.getFileToEditFrom(cmdArgs);
+                    EditMode.start(filePath, siteGenerator);
                 } else {
                     siteGenerator.generate();
                 }

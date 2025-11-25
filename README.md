@@ -9,11 +9,11 @@ involves good layout support (like Tiles).
 
 ## Requirements
 
-C-3PO requires a Java 11 JRE installed on you computer. Upon installation you
-also need Gradle installed. C-3PO has been tested with Gradle 3.0 and 2.12. 
+C-3PO requires a Java 11 JRE installed on you computer. Upon installation, you  also need Gradle installed. C-3PO has been tested with Gradle 3.0 and 2.12.
 
 You'd also need to install [purifycss](https://www.npmjs.com/package/purify-css) if you'd like to purge unused CSS.
 
+For `-n` (new draft command) to work, Python 3 needs to be installed because C-3PO relies on the webserver packaged with Python. Python must be accessible via `python3`.
 
 ## Setup
 
@@ -28,16 +28,19 @@ At the moment, only installing from source is supported. Follow these steps
 
 ## Usage
 
-C-3PO is a command line tool, both for Windows and Unix. C-3PO accepts these command line paramters:
+C-3PO is a command line tool, both for Windows and Unix. C-3PO accepts these command line parameters:
 
 - `-src <dir-name>` ... the root source directory of your website.
 - `-dest <dir-name>` ... the root destination directory in which the website should be generated into.
 - `-a` ... if the flag is set, C-3PO builds the website as soon as files have changed in the source directory tree. This is a useful option when fiddling around with CSS for example.
+- `-n <directory>` ... creates a new draft in Markdown format in the given directory (it needs to exist already), opens up the file in vim, launches a web server serving the contents of `-dest` and launches C-3PO in autobuild mode. If vim is closed, the web server and the autobuild are closed as well.
+- `-t <tag>` ... allows to specify a tag attached to the name of the newly created draft with `-n`.
+- `-e <file-path>` ... almost similar to `-n` but does not create a new draft file. Instead, vim is opened with the given `file-path`.
 - `--fingerprint` ... if set, C-3PO fingerprints static asset files like stylesheets, JavaScript files and images (supported image file extensions are *.png*, *.jpg*, *.jpeg*, *.svg*, *.gif*, *.webp*) and replaces references to them in generated HTML documents accordingly.
 - `--purge-unused-css` ... if set, attempts to purge unused CSS rules in all CSS files beneath `./css`. For this to work, [purifycss](https://www.npmjs.com/package/purify-css) needs to be installed and configured properly in `.c3posettings`.
 - `-p` ... stands for production and automatically sets `--fingerprint` and `--purge-unused-css`. 
 
-**Heads up!** C-3PO is preventing you from accidentally using the same `src` and `dest` directories because this would mean that the source files would be overwritten by their generated counterparts.
+**Heads up!** C-3PO is preventing you from accidentally using the same `src` and `dest` directories because this would mean the source files would be overwritten by their generated counterparts.
 
 Here's an example
 
@@ -45,8 +48,7 @@ Here's an example
 c-3po -src . -dest site -a
 ```
 
-For each file within the project directory structure C-3PO decides what to
-do with it. At the moment C-3PO can
+For each file within the project directory structure C-3PO decides what to  do with it. At the moment C-3PO can
 
 - process Thymeleaf based HTML5 files
   - Thymeleaf's [layout dialect](http://www.thymeleaf.org/doc/articles/layouts.html) is enabled

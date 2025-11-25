@@ -20,6 +20,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.dom.Element;
 import org.thymeleaf.dom.Node;
+import org.thymeleaf.exceptions.TemplateProcessingException;
 import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
@@ -144,6 +145,10 @@ public class SiteGenerator {
         return properties;
     }
 
+    public Path getDestinationDirectoryPath() {
+        return destinationDirectoryPath;
+    }
+
     /**
      * Does a one time site generation.
      * @throws IOException
@@ -176,7 +181,27 @@ public class SiteGenerator {
                 LOG.trace("In watcher loop waiting for a new change notification");
                 key = watchService.take();
             } catch (InterruptedException ex) {
-                return; // stops the infinite loop
+                LOG.info("Caught an InterruptedException while waiting for new watch events. Ending autobuild.");
+
+                // Stop the autobuild due to thread interruption, which according to Brian
+                // Götz "is usually the most sensible way to implement cancellation."
+                // [JCiP, p. 140]
+                //
+                // To support interruption, one has two options: (i) When code is frequently
+                // calling a method that throws InterruptedException, catch it and return.
+                // Or (ii) check the interrupt status of the current thread yourself.
+                // See https://docs.oracle.com/javase/tutorial/essential/concurrency/interrupt.html.
+                //
+                // Since `take()` is satisfying (i), this is a perfect "cancellation point" [JCiP, p. 140].
+                // However, we depend on nobody down the call stack (i.e. none our own code and none
+                // of the libraries in use) "swallowing" interruption state (Hint: Thymeleaf is doing so
+                // in a way (it hides it), and we account for it in the respective places(s)).
+                //
+                // By the way: Thread interruption is called a cooperative mechanism where a thread
+                // is just asked to stop. But requesting an interrupt does not guarantee that a
+                // thread will be terminated. All depends on the code in the thread to respond
+                // accordingly aka "supporting interruption".
+                return;
             }
 
             // Now that we have a "signaled" (as opposed to "ready" and "invalid") watch key,
@@ -283,7 +308,7 @@ public class SiteGenerator {
     }
 
     private void buildWebsite() throws IOException, GenerationException {
-        LOG.debug("Building entire website");
+        LOG.info("Building entire website");
 
         buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
 
@@ -293,7 +318,7 @@ public class SiteGenerator {
     }
 
     private void buildPartOfWebsite(Path srcSubDir) throws IOException, GenerationException {
-        LOG.debug("Building part of website contained in '{}'", srcSubDir);
+        LOG.info("Building part of website contained in '{}'", srcSubDir);
 
         Path subDirPathRelativeToSrc = sourceDirectoryPath.relativize(srcSubDir);
 
@@ -305,7 +330,13 @@ public class SiteGenerator {
     }
 
     private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
-        LOG.debug("Building pages and assets contained in '{}'", sourceDir);
+        LOG.info("Building pages and assets contained in '{}'", sourceDir);
+
+        // A flag tracking thread interruption. If true, the method
+        // continues to build the pages and assets of the current
+        // directory but skips building any subdirectories.
+        // This makes up for a graceful shutdown of the build process.
+        boolean gotInterrupted = false;
 
         // Clear Thymeleaf's template cache
         templateEngine.clearTemplateCache();
@@ -331,8 +362,21 @@ public class SiteGenerator {
                     } catch (IOException e) {
                         LOG.error("Failed to write generated document to {}", destinationPath, e);
                     }
-                } catch (RuntimeException ex) {
+                } catch (TemplateProcessingException ex) {
                     LOG.warn("Thymeleaf failed to process '{}'. Reason: '{}'", htmlFile, ex.getMessage());
+
+                    // Yep, its suboptimal that if the process just got interrupted, we do
+                    // not re-process the current file (and continue building the rest of the
+                    // files in this dir and then stop). Because this leaves the file during which
+                    // the interruption happened in a potentially old state in the destination.
+                    // However, it'd be a huge coincidence that it is a file that just got
+                    // modified. And thread interruption usually happens when a user ends edit
+                    // mode through quitting the C-3PO controlled vim instance. An at this point
+                    // in time, the user is unlikely to check the result again. After all, the
+                    // C-3PO controlled webserver would no longer run as well. Upon
+                    // deployment, an interrupt usually means a serious error condition, e.g.
+                    // the user quitting the building process with ^C.
+                    gotInterrupted = didThymeleafCatchInterrupt(ex);
                 }
             }
         }
@@ -363,6 +407,15 @@ public class SiteGenerator {
                                     WRITE, TRUNCATE_EXISTING);
                         } catch (IOException e) {
                             LOG.error("Failed to generate document from markdown '{}': [{}]", markdownFile, e.getMessage());
+                        } catch (TemplateProcessingException ex) {
+                            LOG.warn("Thymeleaf failed to process markdown template file '{}'. " +
+                                            "Reason: '{}'", markdownTemplatePath, ex.getMessage());
+
+                            // See the other place where this flag is set.
+                            gotInterrupted = didThymeleafCatchInterrupt(ex);
+                        } catch (RuntimeException ex) {
+                            LOG.warn("Failed to process markdown file '{}'. Reason: '{}'",
+                                    markdownFile, ex.getMessage());
                         }
                     }
                 } else {
@@ -400,14 +453,42 @@ public class SiteGenerator {
         }
 
         // Look for subdirectories to be processed
-        try (DirectoryStream<Path> subDirStream =
-                     Files.newDirectoryStream(sourceDir,
-                             entry -> Files.isDirectory(entry) && !isCompleteIgnorable(entry.normalize())
-                                     && !isResultIgnorable(entry.normalize()))) {
-            for (Path subDir : subDirStream) {
-                LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
-                buildPagesAndAssets(subDir, targetDir.resolve(subDir.getFileName()));
+        if (!gotInterrupted) {
+            try (DirectoryStream<Path> subDirStream =
+                         Files.newDirectoryStream(sourceDir,
+                                 entry -> Files.isDirectory(entry) && !isCompleteIgnorable(entry.normalize())
+                                         && !isResultIgnorable(entry.normalize()))) {
+                for (Path subDir : subDirStream) {
+                    LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
+                    buildPagesAndAssets(subDir, targetDir.resolve(subDir.getFileName()));
+                }
             }
+        } else {
+
+            // Last step of implementing our cancellation policy.
+            //
+            // The policy is: When an interrupt is detected, we generate
+            // the rest of the resources in the current directory, but then
+            // end the process by no longer walking down the directory hierarchy.
+            //
+            // At this stage, all resources have been built, and we can "restore" the thread
+            // interruption state (as advised by the prime Java concurrency literature).
+            //
+            // A note about detecting thread interruption: Thymeleaf is kind of doing
+            // that for us – although in a misbehaving manner. Deep down in Thymeleaf, it
+            // is calling its `ResourcePool` class. This class uses a
+            // `java.util.concurrent.Semaphore` object. It calls `Semaphore.acquire` at
+            // some place which throws `InterruptedException`. However, the problem is
+            // that Thymeleaf wraps it in a `RuntimeException` without restoring the
+            // interruption state of the current thread. If we would not catch (and
+            // observe) this `RuntimeException` (which we do above), the interruption
+            // would go unnoticed. As a result, calling code could not react to it.
+            // But that is needed because e.g. `Executor.shutdownNow()` is using
+            // interruption and this below allows to react to it in some higher level
+            // method.
+            //
+            // By the way, new versions of Thymeleaf no longer use `ResourcePool`.
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -415,6 +496,21 @@ public class SiteGenerator {
         Context context = new Context();
         context.setVariable("year", LocalDateTime.now().get(ChronoField.YEAR));
         return context;
+    }
+
+    private boolean didThymeleafCatchInterrupt(RuntimeException ex) {
+
+        // Note: Unfortunately a hack due to Thymeleaf's misbehavior of "swallowing" an
+        // `InterruptedException`. We're aware this is not a stable API. However,
+        // it's the best we can do in the light of Thymeleaf's bad manners.
+        final boolean thymeleafCaughtInterrupt = ex.getCause().getCause() instanceof InterruptedException;
+
+        // For the sake of observability, we write a log.
+        if (thymeleafCaughtInterrupt) {
+            LOG.debug("Thymeleaf caught an InterruptException");
+        }
+
+        return thymeleafCaughtInterrupt;
     }
 
     /**
