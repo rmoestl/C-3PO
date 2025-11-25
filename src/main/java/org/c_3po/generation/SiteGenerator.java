@@ -4,7 +4,6 @@ import io.bit3.jsass.CompilationException;
 import nz.net.ultraq.thymeleaf.LayoutDialect;
 import nz.net.ultraq.thymeleaf.decorators.SortingStrategy;
 import nz.net.ultraq.thymeleaf.decorators.strategies.GroupingStrategy;
-import org.c_3po.cmd.CmdArguments;
 import org.c_3po.generation.assets.AssetReferences;
 import org.c_3po.generation.assets.Fingerprinter;
 import org.c_3po.generation.crawl.RobotsGenerator;
@@ -46,15 +45,12 @@ public class SiteGenerator {
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
     private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
     private static final String CONVENTIONAL_MARKDOWN_TEMPLATE_NAME = "md-template.html";
-    private static final String SETTING_NODEJS_HOME = "nodejsHome";
-    private static final String SETTING_PURIFYCSS_HOME = "purifycssHome";
-    private static final String SETTING_PURIFYCSS_WHITELIST = "purifycssWhitelist";
 
     private final Path sourceDirectoryPath;
     private final Path destinationDirectoryPath;
     private final boolean shouldFingerprintAssets;
     private final boolean shouldPurgeUnusedCss;
-    private final Properties settings;
+    private final Configuration config;
 
     private final DirectoryStream.Filter<Path> sourceHtmlFilter =
             entry -> !isCompleteIgnorable(entry)
@@ -86,12 +82,12 @@ public class SiteGenerator {
 
     private SiteGenerator(Path sourceDirectoryPath, Path destinationDirectoryPath, boolean fingerprintAssets,
                           boolean purgeUnusedCss, List<String> completeIgnorables, List<String> resultIgnorables,
-                          Properties settings) {
+                          Configuration config) {
         this.sourceDirectoryPath = sourceDirectoryPath;
         this.destinationDirectoryPath = destinationDirectoryPath;
         this.shouldFingerprintAssets = fingerprintAssets;
         this.shouldPurgeUnusedCss = purgeUnusedCss;
-        this.settings = settings;
+        this.config = config;
         this.templateEngine = setupTemplateEngine(sourceDirectoryPath);
         this.markdownProcessor = MarkdownProcessor.getInstance();
         this.sassProcessor = SassProcessor.getInstance();
@@ -102,28 +98,22 @@ public class SiteGenerator {
     /**
      * Factory method that creates a SiteGenerator from command line arguments.
      */
-    public static SiteGenerator fromCmdArguments(CmdArguments cmdArguments) {
-        Objects.requireNonNull(cmdArguments);
-        Path sourceDirectoryPath = Paths.get(cmdArguments.getSourceDirectory());
+    public static SiteGenerator from(Configuration config) {
+        Objects.requireNonNull(config);
 
+        Path sourceDirectoryPath = config.getSourceDirectory();
+
+        // Note: We could think about moving this to the `Configuration` class.
         ensureValidSourceDirectory(sourceDirectoryPath);
-
-        // Read in settings
-        Path settingsFilePath = sourceDirectoryPath.resolve(C_3PO_SETTINGS_FILE_NAME);
-        Properties settings = null;
-        try {
-            settings = readSettings(settingsFilePath);
-        } catch (IOException e) {
-            LOG.warn("Failed to load settings from file '{}'", settingsFilePath);
-        }
 
         // Construct instance
         return new SiteGenerator(sourceDirectoryPath,
-                Paths.get(cmdArguments.getDestinationDirectory()),
-                cmdArguments.shouldFingerprintAssets(),
-                cmdArguments.shouldPurgeUnusedCss(),
+                config.getDestinationDirectory(),
+                config.shouldFingerprintAssets(),
+                config.shouldPurgeUnusedCss(),
                 getCompleteIgnorables(sourceDirectoryPath),
-                Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)), settings);
+                Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)),
+                config);
     }
 
     private static void ensureValidSourceDirectory(Path sourceDirectoryPath) {
@@ -135,14 +125,6 @@ public class SiteGenerator {
             throw new IllegalArgumentException(
                     "Source directory '" + sourceDirectoryPath + "' is not a directory.");
         }
-    }
-
-    private static Properties readSettings(Path settingsFilePath) throws IOException {
-        Properties properties = new Properties();
-        if (Files.exists(settingsFilePath)) {
-            properties.load(Files.newInputStream(settingsFilePath));
-        }
-        return properties;
     }
 
     public Path getDestinationDirectoryPath() {
@@ -420,7 +402,7 @@ public class SiteGenerator {
                     }
                 } else {
                     LOG.warn("Not processing markdown files in '{}' because expected template file '{}' is missing",
-                            sourceDir, markdownTemplatePath + ".html");
+                            sourceDir, markdownTemplatePath);
                 }
             }
         }
@@ -518,7 +500,7 @@ public class SiteGenerator {
      */
     private void buildCrawlFiles() {
         String sitemapFileName = "sitemap.xml";
-        String baseUrl = settings.getProperty("baseUrl");
+        String baseUrl = config.getBaseUrl();
 
         boolean noSitemapFileInSourceDir = !Files.exists(sourceDirectoryPath.resolve(sitemapFileName));
         boolean baseSiteUrlIsSet = !StringUtils.isBlank(baseUrl);
@@ -585,24 +567,15 @@ public class SiteGenerator {
         if (this.shouldPurgeUnusedCss) {
 
             // Check if purifycss is configured properly
-            var nodejsHome = this.settings.getProperty(SETTING_NODEJS_HOME);
-            var purifycssHome = this.settings.getProperty(SETTING_PURIFYCSS_HOME);
-            var purifycssWhitelist = this.settings.getProperty(SETTING_PURIFYCSS_WHITELIST, "");
-            if (nodejsHome == null || purifycssHome == null) {
-                if (nodejsHome == null) {
-                    LOG.error("Setting '{}', mandatory for purging unused CSS, is missing in .c3posettings",
-                            SETTING_NODEJS_HOME);
-                }
-                if (purifycssHome == null) {
-                    LOG.error("Setting '{}', mandatory for purging unused CSS, is missing in .c3posettings",
-                            SETTING_PURIFYCSS_HOME);
-                }
-                throw new GenerationException("Abort build because purging unused CSS is active but not " +
-                        "set up properly. See log for more details.");
-            }
+            if (config.validatePurifyCSSConfig()) {
+                var nodejsHome = this.config.getNodeJSHome();
+                var purifyCssHome = this.config.getPurifyCSSHome();
+                var purifyCssWhitelist = this.config.getPurifyCSSWhitelist();
 
-            // Trigger purging at /css root dir
-            purgeUnusedCSSInDir(destinationDirectoryPath.resolve("css"), nodejsHome, purifycssHome, purifycssWhitelist);
+                // Trigger purging at /css root dir
+                purgeUnusedCSSInDir(destinationDirectoryPath.resolve("css"), nodejsHome,
+                        purifyCssHome, purifyCssWhitelist);
+            }
         }
     }
 
@@ -714,7 +687,8 @@ public class SiteGenerator {
 
 
             // Replace references
-            AssetReferences.replaceAssetsReferencesInDir(destinationDirectoryPath, assetSubstitutes, settings);
+            AssetReferences.replaceAssetsReferencesInDir(destinationDirectoryPath, assetSubstitutes,
+                    config.getBaseUrl());
         }
     }
 

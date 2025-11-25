@@ -1,19 +1,16 @@
 package org.c_3po.generation;
 
-import org.c_3po.cmd.CmdArguments;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class NewDraft {
-    public static Path getFilePathFrom(CmdArguments cmdArgs) {
-        return getFilePathFrom(cmdArgs, 0);
+    public static Path getFilePathFrom(Configuration config) {
+        return getFilePathFrom(config, 0);
     }
 
-    private static Path getFilePathFrom(CmdArguments cmdArgs, int suffixNumber) {
-        Path srcDirPath = Paths.get(cmdArgs.getSourceDirectory(), cmdArgs.getNewDraftDir());
-        String tag = cmdArgs.getNewDraftTag();
+    private static Path getFilePathFrom(Configuration config, int suffixNumber) {
+        Path parentDir = config.getSourceDirectory().resolve(config.getNewDraftDir());
+        String tag = config.getNewDraftTag();
 
         // To avoid collisions. If 0, no infix.
         String numericalInfix = suffixNumber == 0 ? "" : "_" + suffixNumber;
@@ -22,10 +19,10 @@ public class NewDraft {
                 ? "_draft_" + tag + numericalInfix + ".md"
                 : "_draft" + numericalInfix + ".md";
 
-        Path filePath = srcDirPath.resolve(fileName);
+        Path filePath = parentDir.resolve(fileName);
 
         return Files.exists(filePath)
-                ? getFilePathFrom(cmdArgs, ++suffixNumber)
+                ? getFilePathFrom(config, ++suffixNumber)
                 : filePath;
     }
 }

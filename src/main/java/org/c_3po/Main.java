@@ -2,6 +2,7 @@ package org.c_3po;
 
 import org.c_3po.cmd.CmdArguments;
 import org.c_3po.editing.EditMode;
+import org.c_3po.generation.Configuration;
 import org.c_3po.generation.NewDraft;
 import org.c_3po.generation.SiteGenerator;
 import org.slf4j.Logger;
@@ -21,23 +22,24 @@ public class Main {
         try {
             LOG.info("Hello There! I'm C-3PO! Which site do you wish me to generate?");
 
-            // Parsing command line arguments
+            // Parse command line arguments
             final CmdArguments cmdArgs = CmdArguments.parse(args);
             cmdArgs.logArguments();
 
-            // Validate command line arguments
-            final boolean cmdArgsValid = cmdArgs.validate();
+            // Validate configuration
+            Configuration config = Configuration.deriveFrom(cmdArgs);
+            final boolean configValid = config.validate();
 
             // Execute the requested C-3PO command
-            if (cmdArgsValid) {
-                SiteGenerator siteGenerator = SiteGenerator.fromCmdArguments(cmdArgs);
-                if (cmdArgs.isAutoBuild()) {
+            if (configValid) {
+                SiteGenerator siteGenerator = SiteGenerator.from(config);
+                if (config.isAutoBuild()) {
                     siteGenerator.generateOnFileChange();
-                } else if (cmdArgs.isNewDraftModeEnabled()) {
-                    Path draftFilePath = NewDraft.getFilePathFrom(cmdArgs);
+                } else if (config.isNewDraftModeEnabled()) {
+                    Path draftFilePath = NewDraft.getFilePathFrom(config);
                     EditMode.start(draftFilePath, siteGenerator);
-                } else if (cmdArgs.isEditModeEnabled()) {
-                    Path filePath = EditMode.getFileToEditFrom(cmdArgs);
+                } else if (config.isEditModeEnabled()) {
+                    Path filePath = EditMode.getFileToEditFrom(config);
                     EditMode.start(filePath, siteGenerator);
                 } else {
                     siteGenerator.generate();

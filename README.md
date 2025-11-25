@@ -55,9 +55,7 @@ For each file within the project directory structure C-3PO decides what to  do w
   - Thymeleaf's `LEGACYHTML5` template mode is enabled
 - copy static resources like CSS and JS files into the destination directory
 
-C-3PO does not require a certain project structure.
-However, it is recommended to follow well-established standards. Here's an
-example:
+C-3PO does not require a certain project structure.  However, it is recommended to follow well-established standards. Here's an example:
 
 - *css/* --> your own CSS or SASS stylesheets
 - *css/vendor* --> third-party CSS stylesheets
@@ -65,8 +63,8 @@ example:
 - *js/vendor/* --> third-party JavaScript files
 - *img/* --> image files
 
-
 ### Samples
+
 C-3PO comes with a sample website that would server as a good starting point for creating a new website. Take a look at `samples/base-website`.
 The sample website illustrates how to:
 - configure `.c3poignore` to ignore certain files
@@ -82,6 +80,8 @@ C-3PO looks for a **.c3posettings** file in the top-level source directory. It's
 
 Here is a list of available settings:
 
+- `src` ... the source directory of the site. When set, you can omit specifying it in the `c-3po` command. The command line argument takes precedence.
+- `dest` ... the destination directory of the site. When set, you can omit specifying it in the `c-3po` command. The command line argument takes precedence.
 - `baseUrl` ... the base URL of the deployed website. If not set, C-3PO does not generate a sitemap.xml file.
 - `nodejsHome` ... the home directory of a nodejs binary which is required for running *purifycss* to purge unused CSS. If you're using *nvm* to manage nodejs installations, this would look something like this: `nodejsHome=/home/robert/.nvm/versions/node/v10.15.3/bin`.
 - `purifycssHome` ...  the home directory of the purifycss installation which is required by C-3PO to purge unused CSS. If you're using *nvm* to manage nodejs installations, this would look something like this: `purifycssHome=/home/robert/.nvm/versions/node/v10.15.3/bin/`.

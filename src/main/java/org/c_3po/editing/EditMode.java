@@ -1,6 +1,6 @@
 package org.c_3po.editing;
 
-import org.c_3po.cmd.CmdArguments;
+import org.c_3po.generation.Configuration;
 import org.c_3po.generation.GenerationException;
 import org.c_3po.generation.SiteGenerator;
 import org.slf4j.Logger;
@@ -8,15 +8,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class EditMode {
     private static final Logger LOG = LoggerFactory.getLogger(EditMode.class);
 
-    public static Path getFileToEditFrom(CmdArguments cmdArgs) {
-        return Paths.get(cmdArgs.getSourceDirectory(), cmdArgs.getFileToEdit());
+    public static Path getFileToEditFrom(Configuration config) {
+        return config.getSourceDirectory().resolve(config.getFileToEdit());
     }
 
     // Note: Not sure accepting a `SiteGenerator` object is good or bad. It

@@ -3,11 +3,6 @@ package org.c_3po.cmd;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 /**
  * Value class holding command line arguments.
  * Note: Class could really benefit from builder pattern.
@@ -154,60 +149,6 @@ public class CmdArguments {
 
     public boolean shouldPurgeUnusedCss() {
         return purgeCss;
-    }
-
-    public boolean validate() throws IOException {
-        return isSrcAndDestNotTheSame()
-                && (!isNewDraftModeEnabled() || isNewDraftDirValid())
-                && (!isEditModeEnabled() || doesFileToEditExist());
-    }
-
-    private boolean isSrcAndDestNotTheSame() throws IOException {
-        boolean dirsAreTheSame;
-        final Path srcPath = Paths.get(sourceDirectory);
-        final Path destpath = Paths.get(destinationDirectory);
-
-        if (Files.exists(srcPath) && Files.exists(destpath)) {
-            dirsAreTheSame = Files.isSameFile(srcPath, destpath);
-        } else {
-            dirsAreTheSame = srcPath.equals(destpath);
-        }
-
-        if (dirsAreTheSame) {
-            LOG.error("'src' and 'dest' locate the same directory, please use different directories");
-        }
-        return !dirsAreTheSame;
-    }
-
-    private boolean isNewDraftDirValid() {
-        return isNewDraftDirSet() && doesNewDraftDirExist();
-    }
-
-    private boolean isNewDraftDirSet() {
-        var newDraftDirSet = newDraftDir != null && !newDraftDir.isBlank();
-        if (!newDraftDirSet) {
-            LOG.error("Directory that should contain the new draft is not set. Supply it with " +
-                    "`-n <path>` whereas path needs to be an existing directory in source directory.");
-        }
-        return newDraftDirSet;
-    }
-
-    private boolean doesNewDraftDirExist() {
-        var dirExists = Files.exists(Paths.get(sourceDirectory, newDraftDir));
-        if (!dirExists) {
-            LOG.error("Directory  '{}' that should contain the new draft does not exist" +
-                            " within source directory '{}'", newDraftDir, sourceDirectory);
-        }
-        return dirExists;
-    }
-
-    private boolean doesFileToEditExist() {
-        var fileExists = Files.exists(Paths.get(sourceDirectory, fileToEdit));
-        if (!fileExists) {
-            LOG.error("File '{}' does not exist. Edit mode `-e <file-path>` requires " +
-                            "`file-path` to exist.", fileToEdit);
-        }
-        return fileExists;
     }
 
     public void logArguments() {

@@ -26,7 +26,7 @@ class SiteGeneratorSpec extends Specification {
         def cmdArguments = new CmdArguments(srcDir.resolve("/foo").toString(), destDir.toString(), false, false, false)
 
         when:
-        SiteGenerator.fromCmdArguments(cmdArguments);
+        SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
 
         then:
         thrown(IllegalArgumentException)
@@ -38,7 +38,7 @@ class SiteGeneratorSpec extends Specification {
                 false)
 
         when:
-        SiteGenerator.fromCmdArguments(cmdArguments);
+        SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
 
         then:
         thrown(IllegalArgumentException)
@@ -47,7 +47,7 @@ class SiteGeneratorSpec extends Specification {
     def "test that result-ignorables are not put into the destination directory / output"() {
         setup:
         def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
-        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+        def siteGenerator = SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
 
         when:
         siteGenerator.generate()
@@ -59,7 +59,7 @@ class SiteGeneratorSpec extends Specification {
     def "test that standard C-3PO files are not put into the destination directory / output"() {
         setup:
         def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
-        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+        def siteGenerator = SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
 
         when:
         siteGenerator.generate()
@@ -74,7 +74,7 @@ class SiteGeneratorSpec extends Specification {
         def shouldFingerprintAssets = true
         def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets,
                 false)
-        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+        def siteGenerator = SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
 
         when: "being generated"
         siteGenerator.generate()
@@ -98,7 +98,7 @@ class SiteGeneratorSpec extends Specification {
         def shouldFingerprintAssets = false
         def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, shouldFingerprintAssets,
                 false)
-        def siteGenerator = SiteGenerator.fromCmdArguments(cmdArguments);
+        def siteGenerator = SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
 
         when:
         siteGenerator.generate()

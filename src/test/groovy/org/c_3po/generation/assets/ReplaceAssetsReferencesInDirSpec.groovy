@@ -1,5 +1,7 @@
 package org.c_3po.generation.assets
 
+import org.c_3po.cmd.CmdArguments
+import org.c_3po.generation.Configuration
 import org.c_3po.io.Directories
 import spock.lang.Shared
 import spock.lang.Specification
@@ -22,7 +24,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
             '/js/vendor/jquery.js': '/js/vendor/jquery.083f0c5df3398060df50f99d59edf31127720da0.js',
             '/img/logo.svg': '/img/logo.dd6c240331f12aa6489f3757b023b1b7866a17cc.svg'
     ]
-    def generatorSettings = new Properties()
+    def baseUrl = ""
     def destDirClone = Files.createTempDirectory("c-3po_dest-dir-for-specs_")
 
     def setupSpec() {
@@ -34,14 +36,13 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
         // Clone dir so that each feature works on a clean slate
         Directories.copyDir(destDir, destDirClone)
 
-        // TODO: If ever reading out settings is ever more than that, e.g. coercing default values,
-        //  be sure to use the corresponding function that is called in application code as well.
-        generatorSettings.load(Files.newInputStream(srcDir.resolve(".c3posettings")))
+        def generatorConfig = Configuration.deriveFrom(CmdArguments.parse(["-src", srcDir.toString()] as String[]))
+        baseUrl = generatorConfig.getBaseUrl()
     }
 
     def "replaces asset references in HTML within a given directory" () {
         when:
-        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, baseUrl)
 
         then:
         assertRefsReplacedIn("blog.html")
@@ -50,7 +51,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
 
     def "replaces asset references in HTML files located in sub directories" () {
         when:
-        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, baseUrl)
 
         then:
         assertRefsReplacedIn("blog/first-blog-post.html")
@@ -63,7 +64,7 @@ class ReplaceAssetsReferencesInDirSpec extends Specification {
         assertAssetsWithRelativeURIIn("blog/first-blog-post.html")
 
         when:
-        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, generatorSettings)
+        AssetReferences.replaceAssetsReferencesInDir(destDirClone, assetSubstitutes, baseUrl)
 
         then:
         assertRefsReplacedIn("blog.html")
