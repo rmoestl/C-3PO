@@ -24,7 +24,8 @@ class IgnorablesMatcher {
     }
 
     static IgnorablesMatcher from(Path basePath, List<String> globPatterns) {
-        return new IgnorablesMatcher(basePath, globPatterns);
+        var noBlankGlobPatterns = globPatterns.stream().filter(gp -> !gp.isBlank()).toList();
+        return new IgnorablesMatcher(basePath, noBlankGlobPatterns);
     }
 
     boolean matches(Path path) {

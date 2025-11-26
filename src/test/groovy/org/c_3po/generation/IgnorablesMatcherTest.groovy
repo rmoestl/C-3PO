@@ -21,6 +21,20 @@ class IgnorablesMatcherTest extends Specification {
             "_layouts"
     ]
 
+    def ".from ignores empty glob patterns" () {
+        given:
+        def globs = [".git", "README.md", ""]
+        def baseDir = Paths.get("./web")
+
+        when:
+        def matcher = IgnorablesMatcher.from(baseDir, globs)
+
+        then:
+        matcher.matches(Paths.get(".git"))
+        matcher.matches(Paths.get("README.md"))
+        !matcher.matches(baseDir)
+    }
+
     @Unroll
     def "test if matcher with absolute base path matches #path to #isMatching" (String path, boolean isMatching) {
         setup:
