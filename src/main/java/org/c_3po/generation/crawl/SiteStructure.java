@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 public class SiteStructure {
     public static final String URL_PATH_DELIMITER = "/";
     private final String baseUrl;
-    private List<Path> paths = new ArrayList<>();
+    private final List<Path> paths = new ArrayList<>();
 
     private SiteStructure(String baseUrl) {
         this.baseUrl = withTrailingSlash(baseUrl);
@@ -35,11 +35,9 @@ public class SiteStructure {
     }
 
     public List<String> toUrls() {
-        return paths.stream().map(pagePath -> baseUrl + toUrlPart(pagePath)).collect(Collectors.toList());
-    }
-
-    public String getBaseUrl() {
-        return baseUrl;
+        return paths.stream()
+                    .map(pagePath -> baseUrl + toUrlPart(pagePath))
+                    .collect(Collectors.toList());
     }
 
     private String withTrailingSlash(String s) {

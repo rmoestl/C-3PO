@@ -33,7 +33,7 @@ class SiteStructureTest extends Specification {
         thrown(IllegalArgumentException)
     }
 
-    def "test that toUrls doesn't produces Urls with double slashes after baseUrl"(String baseUrl, String pagePath) {
+    def "test that .toUrls doesn't produces Urls with double slashes after baseUrl"(String baseUrl, String pagePath) {
         setup:
         def siteStructure = SiteStructure.getInstance(baseUrl)
 
@@ -52,7 +52,7 @@ class SiteStructureTest extends Specification {
         "http://yodaconditions.net" | "resources/seo-links.html"
     }
 
-    def "test that toUrls retrieves all previously added paths prefixed with set baseUrl"() {
+    def "test that .toUrls retrieves all previously added paths prefixed with set baseUrl"() {
         setup:
         def baseUrl = "http://yodaconditions.net"
         def siteStructure = SiteStructure.getInstance(baseUrl)
