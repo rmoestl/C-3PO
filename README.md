@@ -90,10 +90,11 @@ Here is a list of available settings:
 ### Generating sitemap.xml and robots.txt
 
 C-3PO is able to generate a `sitemap.xml` (as specified at http://www.sitemaps.org) file and a `robots.txt` file.
-In order to generate a sitemap.xml, C-3PO requires **two prerequisites** to be fulfilled:
 
-- there must not exist a sitemap.xml file in the source directory (the same is true for robots.txt)
-- the **baseUrl** (e.g. http://yodaconditions.net) setting must be set in `.c3posettings`
+To generate a sitemap.xml, C-3PO requires **two prerequisites** to be fulfilled:
+
+- There must not exist a sitemap.xml file in the source directory (the same is true for robots.txt).
+- The **baseUrl** (e.g. http://yodaconditions.net) setting must be set in `.c3posettings`.
 
 Sometimes it's also desirable to exclude URLs from being crawled. This can be done in the `.c3poignore` file as described in the corresponding section.
 
@@ -103,15 +104,11 @@ When there is no `robots.txt` in the source folder, the C-3PO generates a minima
 
 ### Ignoring certain files
 
-You'll want to ignore certain files, e.g. the .git folder. Place a text file
-named **.c3poignore** into the root directory (defined by -src). Therein list
-the files and directories (one line for each) that should not be
-processed by C-3PO.
+You'll want to ignore certain files, e.g. the .git folder. Place a text file named **.c3poignore** into the root directory (defined by -src). Therein list the files and directories (one line for each) that should not be processed by C-3PO.
 
 #### Can I use wildcards?
 
-Yes. The [glob](https://docs.oracle.com/javase/tutorial/essential/io/fileOps.html#glob)
-syntax is supported.
+Yes. The [glob](https://docs.oracle.com/javase/tutorial/essential/io/fileOps.html#glob) syntax is supported.
 
 #### .c3poignore example
 
@@ -155,9 +152,10 @@ _layouts [er]
 
 
 ### Using Markdown
+
 C-3PO allows you to write in markdown. To be precise [commonmark](http://commonmark.org/) is used. Why? Because it's an effort to standardize markdown syntax.
 
-**Anyways, how do you use markdown with C-3PO?**
+**Anyway, how do you use markdown with C-3PO?**
 
 Create a markdown file. Then create a Thymeleaf template called `md-template.html` in the same directory. Within `md-template.html` you are able to access two `context` objects called `markdownContent` (the HTML elements that result from processing the markdown file as a `String`) and `markdownHead` (an object representing `meta` tags and `title` to be included in the page's `head`; further description below). `md-template.html` is simply a wrapper for the markdown content that allows us to integrate with the site's layout and so on.
 
@@ -188,14 +186,17 @@ Example of a `md-template.html` file:
 Note the use of `th:utext` to spit out the HTML string in `markdownContent`. Beware that `th:utext` renders **unescaped** text.
 
 #### Define HTML title and meta tags in markdown
+
 C-3PO introduced an extension to commonmark allowing editors to define the `title` and `meta tags` for the resulting HTML page.
 
 **Why is this useful?**
 
-1. Reader Experience: people like when browser tabs show meaningful titles
-2. SERPs: the contents of the `meta description` tag is shown on *search engine result pages (SERP)*. Ideally a description is 150 to 160 characters long. A good meta description will raise the chances that search engine users click through to your site.
+1. Reader Experience: People like when browser tabs show meaningful titles.
+2. SERPs: The contents of the `meta description` tag is shown on *search engine result pages (SERP)*. Ideally a description is 150 to 160 characters long. A good meta description will raise the chances that search engine users click through to your site.
 
 **So, how do I define these meta tags?**
+
+Here is an example:
 
 ```
 $meta-title: A catchy page title
@@ -205,7 +206,7 @@ $meta-description: A summary that describes the contents (ideally 150 to 160 cha
 ...
 ```
 
-They must start with `$meta-`. Everything between `$meta-` and the colon `:` will become the name of the meta tag. The rest after the colon `:` will be the content of the meta tag.
+They must start with `$meta-` like `$meta-description: Some ...`. Everything between `$meta-` and the colon `:` will become the name of the meta tag. The rest after the colon `:` will be the content of the meta tag. They do not have to be placed at the beginning of a document. You can also define them somewhere in the middle and even at the end.
 
 When processing a markdown file, C-3PO will put this data as an object called `markdownHead` into the template's context. You'll be able to use the `markdownHead` object in the Thymeleaf template file `md-template.html` like this:
 

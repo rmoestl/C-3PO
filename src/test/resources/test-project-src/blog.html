@@ -7,8 +7,9 @@
     <body>
         <div layout:fragment="content">
             <h1>C-3PO Test Blog</h1>
-            <ul class="no-bullets index-list">
-                <li><a href="blog/first-blog-post.html">First Blog Post</a><span class="publish-date">2015-12-11</span></li>
+            <ul class="no-bullets index-list" th:each="page : ${pageTree.getPagesIn('/blog')}">
+              <li><a th:href="${page.url()}" th:text="${page.title()}">A title</a>
+                  <span class="publish-date" th:text="${page.publishDate()}">2015-12-11</span></li>
             </ul>
         </div>
     </body>

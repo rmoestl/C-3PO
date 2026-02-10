@@ -1,6 +1,7 @@
 package org.c_3po.generation
 
 import org.c_3po.cmd.CmdArguments
+import org.jsoup.Jsoup
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -16,6 +17,8 @@ import static org.c_3po.generation.assets.AssetReferencesHelpers.assertRefsRepla
 class SiteGeneratorSpec extends Specification {
     @Shared Path srcDir = Paths.get("src/test/resources/test-project-src")
     @Shared Path destDir = Paths.get("src/test/resources/test-project-build")
+    @Shared CmdArguments defaultCmdArgs = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
+    @Shared Configuration defaultConfig = Configuration.deriveFrom(defaultCmdArgs)
 
     def setup() {
         SiteGenerationHelpers.ensureDestinationDirIsClean(destDir)
@@ -46,8 +49,7 @@ class SiteGeneratorSpec extends Specification {
 
     def "test that result-ignorables are not put into the destination directory / output"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
-        def siteGenerator = SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
+        def siteGenerator = SiteGenerator.from(defaultConfig);
 
         when:
         siteGenerator.generate()
@@ -58,8 +60,7 @@ class SiteGeneratorSpec extends Specification {
 
     def "test that standard C-3PO files are not put into the destination directory / output"() {
         setup:
-        def cmdArguments = new CmdArguments(srcDir.toString(), destDir.toString(), false, false, false)
-        def siteGenerator = SiteGenerator.from(Configuration.deriveFrom(cmdArguments));
+        def siteGenerator = SiteGenerator.from(defaultConfig);
 
         when:
         siteGenerator.generate()
@@ -106,6 +107,30 @@ class SiteGeneratorSpec extends Specification {
         then:
         Files.notExists(destDir.resolve("css/main.6180d1743d1be0d975ed1afbdc3b4c0bfb134124.css"))
         Files.notExists(destDir.resolve("css/vendor/normalize.05802ba9503c8a062ee85857fc774d41e96d3a80.css"))
+    }
+
+    def "supports auto-generating index pages by supplying a PageTree object in the template context" () {
+        given:
+        def siteGenerator = SiteGenerator.from(defaultConfig)
+
+        when:
+        siteGenerator.generate()
+
+        then:
+        assertBlogHtmlListsBlogPosts()
+    }
+
+    private void assertBlogHtmlListsBlogPosts() {
+        def doc = Jsoup.parse(destDir.resolve("blog.html").toFile())
+        def li = doc.select(".index-list li")
+
+        assert li != null
+        assert li.size() == 2
+        assert li.select("[href=/blog/first-blog-post.html]").size() == 1
+        assert li.select("[href=/blog/second-blog-post.html]").size() == 1
+        assert li.select(".publish-date").size() == 2
+        assert li.select(".publish-date").get(0).text() == "2025-03-21"
+        assert li.select(".publish-date").get(1).text() == "2024-04-04"
     }
 
 // NOTE: Inactive because generateSite under the hoods causes a full build and thus HTML files

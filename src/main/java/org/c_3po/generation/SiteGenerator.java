@@ -10,6 +10,8 @@ import org.c_3po.generation.crawl.RobotsGenerator;
 import org.c_3po.generation.crawl.SiteStructure;
 import org.c_3po.generation.crawl.SitemapGenerator;
 import org.c_3po.generation.markdown.MarkdownProcessor;
+import org.c_3po.generation.meta.PageTree;
+import org.c_3po.generation.meta.PageTreeBuilder;
 import org.c_3po.generation.sass.SassProcessor;
 import org.c_3po.io.FileFilters;
 import org.c_3po.util.StringUtils;
@@ -40,7 +42,7 @@ import static java.nio.file.StandardWatchEventKinds.*;
 /**
  * Main class responsible for site generation.
  */
-public class SiteGenerator {
+public class SiteGenerator implements IFileClassifier {
     private static final Logger LOG = LoggerFactory.getLogger(SiteGenerator.class);
     private static final String C_3PO_IGNORE_FILE_NAME = ".c3poignore";
     private static final String C_3PO_SETTINGS_FILE_NAME = ".c3posettings";
@@ -51,6 +53,7 @@ public class SiteGenerator {
     private final boolean shouldFingerprintAssets;
     private final boolean shouldPurgeUnusedCss;
     private final Configuration config;
+    private final PageTreeBuilder pageTreeBuilder;
 
     private final DirectoryStream.Filter<Path> sourceHtmlFilter =
             entry -> !isCompleteIgnorable(entry)
@@ -93,6 +96,7 @@ public class SiteGenerator {
         this.sassProcessor = SassProcessor.getInstance();
         this.completeIgnorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, completeIgnorables);
         this.resultIgnorablesMatcher = IgnorablesMatcher.from(sourceDirectoryPath, resultIgnorables);
+        this.pageTreeBuilder = PageTreeBuilder.getInstance(this);
     }
 
     /**
@@ -112,7 +116,7 @@ public class SiteGenerator {
                 config.shouldFingerprintAssets(),
                 config.shouldPurgeUnusedCss(),
                 getCompleteIgnorables(sourceDirectoryPath),
-                Ignorables.readResultIgnorables(sourceDirectoryPath.resolve(C_3PO_IGNORE_FILE_NAME)),
+                getResultIgnorables(sourceDirectoryPath),
                 config);
     }
 
@@ -207,15 +211,17 @@ public class SiteGenerator {
                     changedPath = parent.resolve(changedPath);
 
                     if (kind == ENTRY_CREATE || kind == ENTRY_MODIFY) {
-                        if (sourceHtmlFilter.accept(changedPath) || sassFilter.accept(changedPath)) {
+                        if (sourceHtmlFilter.accept(changedPath)
+                                || sassFilter.accept(changedPath)
+                                || markdownFilter.accept(changedPath)) {
                             buildWebsite();
-                        } else if (staticFileFilter.accept(changedPath) ||
-                                markdownFilter.accept(changedPath) ||
-                                markdownTemplateFilter.accept(changedPath)) {
+                        } else if (staticFileFilter.accept(changedPath)
+                                || markdownTemplateFilter.accept(changedPath)) {
                             Path srcSubDir = (Path) key.watchable();
 
-                            // Changed static assets and markdown articles don't require a full rebuild
-                            // because their contents isn't copied over into another file.
+                            // Changed static assets and markdown templates don't require a full rebuild
+                            // because their contents isn't used in another file outside the containing
+                            // directory.
                             buildPartOfWebsite(srcSubDir);
                         } else if (Files.isDirectory(changedPath) && !isCompleteIgnorable(changedPath)) {
                             if (kind == ENTRY_CREATE) {
@@ -292,7 +298,10 @@ public class SiteGenerator {
     private void buildWebsite() throws IOException, GenerationException {
         LOG.info("Building entire website");
 
-        buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath);
+        PageTree pageTree = pageTreeBuilder.obtainFrom(sourceDirectoryPath);
+
+        buildPagesAndAssets(sourceDirectoryPath, destinationDirectoryPath,
+                getBaseTemplateContext(pageTree));
 
         purgeUnusedCssInAllStylesheetsIfEnabled();
 
@@ -302,16 +311,18 @@ public class SiteGenerator {
     private void buildPartOfWebsite(Path srcSubDir) throws IOException, GenerationException {
         LOG.info("Building part of website contained in '{}'", srcSubDir);
 
-        Path subDirPathRelativeToSrc = sourceDirectoryPath.relativize(srcSubDir);
+        PageTree pageTree = pageTreeBuilder.obtainFrom(sourceDirectoryPath);
 
-        buildPagesAndAssets(srcSubDir, destinationDirectoryPath.resolve(subDirPathRelativeToSrc));
+        Path destSubDir = destinationDirectoryPath.resolve(sourceDirectoryPath.relativize(srcSubDir));
+        buildPagesAndAssets(srcSubDir, destSubDir, getBaseTemplateContext(pageTree));
 
         purgeUnusedCssInAllStylesheetsIfEnabled();
 
         fingerprintAssetsIfEnabled();
     }
 
-    private void buildPagesAndAssets(Path sourceDir, Path targetDir) throws IOException {
+    private void buildPagesAndAssets(Path sourceDir, Path targetDir, Context templateContext)
+            throws IOException {
         LOG.info("Building pages and assets contained in '{}'", sourceDir);
 
         // A flag tracking thread interruption. If true, the method
@@ -331,12 +342,12 @@ public class SiteGenerator {
         // Look for HTML files to generate
         try (DirectoryStream<Path> htmlFilesStream = Files.newDirectoryStream(sourceDir, sourceHtmlFilter)) {
             for (Path htmlFile : htmlFilesStream) {
-                LOG.trace("Generate '{}'", htmlFile);
+                LOG.info("Generate '{}'", htmlFile);
 
                 // Generate
                 try {
                     List<String> lines = Collections.singletonList(
-                            templateEngine.process(htmlFile.toString().replace(".html", ""), getBaseTemplateContext()));
+                            templateEngine.process(htmlFile.toString().replace(".html", ""), templateContext));
                     // Write to file
                     Path destinationPath = targetDir.resolve(htmlFile.getFileName());
                     try {
@@ -377,11 +388,13 @@ public class SiteGenerator {
                             MarkdownProcessor.Result mdResult = markdownProcessor.process(markdownFile);
 
                             // Integrate into Thymeleaf template
-                            Context context = getBaseTemplateContext();
-                            context.setVariable("markdownContent", mdResult.getContentResult());
-                            context.setVariable("markdownHead", mdResult.getHeadResult());
-                            context.setVariable("markdownFileName", markdownFile.toString());
-                            String result = templateEngine.process(markdownTemplateName, context);
+                            // Because we pass on the templateContext, we don't want to mess with it
+                            // because it is mutable.
+                            Context mdContext = cloneContext(templateContext);
+                            mdContext.setVariable("markdownContent", mdResult.getContentResult());
+                            mdContext.setVariable("markdownHead", mdResult.getHeadResult());
+                            mdContext.setVariable("markdownFileName", markdownFile.toString());
+                            String result = templateEngine.process(markdownTemplateName, mdContext);
 
                             // Write result to file
                             Path destinationPath = targetDir.resolve(markdownFile.getFileName().toString().replace(".md", ".html"));
@@ -442,7 +455,7 @@ public class SiteGenerator {
                                          && !isResultIgnorable(entry.normalize()))) {
                 for (Path subDir : subDirStream) {
                     LOG.trace("I'm going to build pages in this subdirectory [{}]", subDir);
-                    buildPagesAndAssets(subDir, targetDir.resolve(subDir.getFileName()));
+                    buildPagesAndAssets(subDir, targetDir.resolve(subDir.getFileName()), templateContext);
                 }
             }
         } else {
@@ -474,10 +487,17 @@ public class SiteGenerator {
         }
     }
 
-    private Context getBaseTemplateContext() {
+    private Context getBaseTemplateContext(PageTree pageTree) {
         Context context = new Context();
         context.setVariable("year", LocalDateTime.now().get(ChronoField.YEAR));
+        context.setVariable("pageTree", pageTree);
         return context;
+    }
+
+    private Context cloneContext(Context context) {
+        var newContext = new Context();
+        newContext.setVariables(context.getVariables());
+        return newContext;
     }
 
     private boolean didThymeleafCatchInterrupt(RuntimeException ex) {
@@ -736,19 +756,26 @@ public class SiteGenerator {
         return ignorables;
     }
 
-    private boolean isCompleteIgnorable(Path path) throws IOException {
-        return completeIgnorablesMatcher.matches(path)
-                || Files.exists(destinationDirectoryPath) && Files.exists(path) && Files.isSameFile(path, destinationDirectoryPath);
-    }
+    /**
+     * Reads result ignorables from ignore file and adds C-3PO standard files.
+     */
+    private static List<String> getResultIgnorables(Path baseDirectory) {
+        List<String> ignorables = new ArrayList<>();
 
-    private boolean isResultIgnorable(Path path) throws IOException {
-        return resultIgnorablesMatcher.matches(path)
-                || Files.exists(destinationDirectoryPath) && Files.exists(path) && Files.isSameFile(path, destinationDirectoryPath);
+        // System standard ignorables
+        ignorables.add("**" + CONVENTIONAL_MARKDOWN_TEMPLATE_NAME);
+
+        // User-specific ignorables
+        List<String> ignorablesFromFile = Ignorables.readResultIgnorables(
+                baseDirectory.resolve(C_3PO_IGNORE_FILE_NAME));
+        ignorables.addAll(ignorablesFromFile);
+
+        return ignorables;
     }
 
     private void updateIgnorables(Path ignorablesFile) {
         List<String> newCompleteIgnorables = getCompleteIgnorables(ignorablesFile);
-        List<String> newResultIgnorables = Ignorables.readResultIgnorables(ignorablesFile);
+        List<String> newResultIgnorables = getResultIgnorables(ignorablesFile);
 
         cleanOutputFromAddedIgnorables(newCompleteIgnorables, completeIgnorablesMatcher.getGlobPatterns());
         cleanOutputFromAddedIgnorables(newResultIgnorables, resultIgnorablesMatcher.getGlobPatterns());
@@ -803,6 +830,48 @@ public class SiteGenerator {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    @Override
+    public boolean isCompleteIgnorable(Path path) {
+        return completeIgnorablesMatcher.matches(path) || isDestinationDirectory(path);
+    }
+
+    @Override
+    public boolean isResultIgnorable(Path path) {
+        return resultIgnorablesMatcher.matches(path) || isDestinationDirectory(path);
+    }
+
+    private boolean isDestinationDirectory(Path path) {
+        try {
+            return Files.exists(destinationDirectoryPath)
+                    && Files.exists(path)
+                    && Files.isSameFile(path, destinationDirectoryPath);
+        } catch (IOException e) {
+            LOG.warn("Failed to check if '{}' is the destination directory '{}'",
+                    path, destinationDirectoryPath, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isHTML(Path file) {
+        try {
+            return sourceHtmlFilter.accept(file);
+        } catch (IOException e) {
+            LOG.warn("Failed to check if '{}' is a HTML file.", file, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isMarkdown(Path file) {
+        try {
+            return markdownFilter .accept(file);
+        } catch (IOException e) {
+            LOG.warn("Failed to check if '{}' is a Markdown file.", file, e);
+            return false;
+        }
     }
 
     private void deleteDirectory(Path dir) throws IOException {

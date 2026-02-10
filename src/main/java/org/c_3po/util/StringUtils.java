@@ -33,4 +33,18 @@ public class StringUtils {
         Arrays.stream(strings).forEach(s -> stringJoiner.add(s.replaceAll("[" + delimiter + "]", "")));
         return stringJoiner.toString();
     }
+
+    /**
+     * Puts the first character of the given string to upper case.
+     *
+     * @param s the string to capitalize
+     * @return the passed string with the first character in upper case
+     */
+    public static String capitalize(String s) {
+        if (s == null || s.isEmpty()) {
+            return s;
+        }
+
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
+    }
 }

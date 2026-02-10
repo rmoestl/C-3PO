@@ -18,7 +18,8 @@ class IgnorablesMatcherTest extends Specification {
             "**/*.sass",
             ".gitignore",
             "*.txt",
-            "_layouts"
+            "_layouts",
+            "**md-template.html"
     ]
 
     def ".from ignores empty glob patterns" () {
@@ -59,6 +60,13 @@ class IgnorablesMatcherTest extends Specification {
         "sass/vendor/main.sass" | true
         "test.txt" | true
         "notes.txt" | true
+        "md-template.html" | true
+        "/md-template.html" | true
+        "./md-template.html" | true
+        "blog/md-template.html" | true
+        "./blog/md-template.html" | true
+        "/blog/md-template.html" | true
+        "blog/2025/md-template.html" | true
     }
 
     @Unroll
