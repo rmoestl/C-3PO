@@ -2,7 +2,9 @@ package org.c_3po.generation.markdown;
 
 import org.commonmark.Extension;
 import org.commonmark.html.HtmlRenderer;
-import org.commonmark.node.*;
+import org.commonmark.node.AbstractVisitor;
+import org.commonmark.node.CustomBlock;
+import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,23 +39,29 @@ public class MarkdownProcessor {
         if (Files.exists(markdownFile)) {
             LOG.debug("Processing markdown file '{}'", markdownFile);
 
-            // Read in contents
-            List<String> lines = Files.readAllLines(markdownFile);
-            StringBuilder sb = new StringBuilder(lines.size());
-            lines.stream().forEach(l -> sb.append(l).append(System.lineSeparator()));
+            // Parse markdown
+            Node document = parseDocument(markdownFile);
 
-            // Parse markdown and produce HTML content
-            Node document = parser.parse(sb.toString());
+            // Produce HTML content
             String output = htmlRenderer.render(document);
 
             // Process meta tags
-            MetaTagsVisitor metaTagsVisitor = new MetaTagsVisitor();
-            document.accept(metaTagsVisitor);
+            Head head = extractMetadata(document);
 
-            return new Result(metaTagsVisitor.getResult(), output);
+            return new Result(head, output);
         } else {
-            throw new FileNotFoundException("File '" + markdownFile.toAbsolutePath().toString() + "' not found.");
+            throw new FileNotFoundException("File '" + markdownFile.toAbsolutePath() + "' not found.");
         }
+    }
+
+    private Node parseDocument(Path file) throws IOException {
+        return parser.parse(Files.readString(file));
+    }
+
+    private Head extractMetadata(Node document) {
+        MetaTagsVisitor metaTagsVisitor = new MetaTagsVisitor();
+        document.accept(metaTagsVisitor);
+        return metaTagsVisitor.getResult();
     }
 
     public static class Result {

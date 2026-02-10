@@ -4,7 +4,7 @@ import org.commonmark.node.CustomBlock;
 import org.commonmark.node.Visitor;
 
 /**
- * A AST block node representing a meta tag.
+ * An AST block node representing a meta tag.
  */
 public class MetaTag extends CustomBlock {
     private final String name;
