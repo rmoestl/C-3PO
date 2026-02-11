@@ -59,6 +59,16 @@ public class PageTreeBuilder {
                             ? FileVisitResult.SKIP_SUBTREE
                             : FileVisitResult.CONTINUE;
                 }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException exc) {
+
+                    // Note: This is likely when a temp file was existing (e.g. from editing with vim)
+                    // when the file walk began but no longer exists. We simply continue. The default
+                    // impl. would through an IOException.
+                    // See https://stackoverflow.com/questions/72851557/why-java-files-walkfiletree-throw-a-nosuchfileexception
+                    return FileVisitResult.CONTINUE;
+                }
             });
 
             return pageTree;
