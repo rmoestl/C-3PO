@@ -110,43 +110,51 @@ class ExtractionFromMarkdownSpec extends Specification {
                     + 'defined at the end of the file'),
                 md  : '''$meta-title: BMW M3 Touring
                          $meta-description: This is a serious review of the first BMW M3 touring.
-                         
+
                          # All about the BMW M3 Touring
-                         
+
                          This car is the dream of...
-                         
+
                          $meta-publishDate: 2026-02-03''',
                 date: '2026-02-03'
             ],
             [
-                rule: ('falls back to the file\'s last modification date if'
-                    + ' meta-publishDate isn\'t defined'),
+                rule: ('falls back to the file\'s last modification date if '
+                    + '$meta-publishDate isn\'t defined'),
                 md  : '''$meta-title: BMW M3 Touring
                          $meta-description: This is a serious review of the first BMW M3 touring.
-                         
+
                          # All about the BMW M3 Touring
-                         
+
                          This car is the dream of...''',
                 date: LocalDate.now()
             ],
             [
                 rule: ('falls back to the file\'s last modification date if '
-                    + 'meta-publishDate can\'t be parsed to a date'),
+                    + '$meta-publishDate can\'t be parsed to a date'),
                 md  : '''$meta-publishDate: The quick brown fox
                          $meta-title: BMW M3 Touring
                          $meta-description: This is a serious review of the first BMW M3 touring.
-                         
+
                          # All about the BMW M3 Touring
-                         
+
                          This car is the dream of...''',
                 date: LocalDate.now()
+            ],
+            [
+                rule: ('is capable to deal with trailing whitespace in $meta-publishDate '
+                    + 'meta-publishDate can\'t be parsed to a date'),
+                md  : '''$meta-publishDate: 2018-12-14 
+                         
+                         # All about the BMW M3 Touring''',
+                date: '2018-12-14'
             ]
         ]
     }
 
     def trimLeadingWhitespaceInLines(String s) {
         def lines = s.split("\n")
-        lines.toList().stream().map { l -> l.trim() }.collect(Collectors.toList()).join("\n")
+        lines.toList().stream().map { l -> l.stripLeading() }.collect(Collectors.toList()).join("\n")
     }
 
     def extractFromMarkdown(String contents, String filename = null) {

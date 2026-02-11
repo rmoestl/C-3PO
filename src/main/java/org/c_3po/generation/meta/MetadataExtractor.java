@@ -85,7 +85,8 @@ class MetadataExtractor {
 
     private static class MarkdownExtractor {
         private static final Pattern META_TITLE_PATTERN = Pattern.compile("^\\$meta-title: (.*)$");
-        private static final Pattern META_PUBLISH_DATE_PATTERN = Pattern.compile("^\\$meta-publishDate: (.*)$");
+        private static final Pattern META_PUBLISH_DATE_PATTERN =
+                Pattern.compile("^\\$meta-publishDate: (\\d{4}-\\d{2}-\\d{2})\\s*$");
         private static final Pattern H1_PATTERN = Pattern.compile("^# (.*)$");
 
         static Metadata extract(Path file) throws GenerationException {
